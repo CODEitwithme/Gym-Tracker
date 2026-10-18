@@ -122,6 +122,27 @@ describe('saved meals management', () => {
     ).rejects.toThrow(/non-negative/)
   })
 
+  it('propagates a failed IndexedDB saved-meal write without creating a record', async () => {
+    vi.spyOn(testDatabase.savedMeals, 'add').mockRejectedValueOnce(
+      new Error('Injected IndexedDB write failure'),
+    )
+
+    await expect(
+      createMeal(
+        {
+          name: 'Unpersisted meal',
+          servingDescription: '1 serving',
+          calorieSource: 'macro_estimate',
+          proteinG: 10,
+          carbsG: 20,
+          fatG: 5,
+        },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Injected IndexedDB write failure/)
+    expect(await testDatabase.savedMeals.count()).toBe(0)
+  })
+
   it('updates an existing saved meal and recalculates calories when switching to macro_estimate', async () => {
     const meal = await createMeal(
       {

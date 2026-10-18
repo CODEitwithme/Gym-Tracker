@@ -28,6 +28,7 @@ import {
   loadWorkoutDetails,
   startWorkout,
   saveExerciseNotes,
+  saveWorkoutNotes,
 } from './workoutService'
 import * as workoutService from './workoutService'
 import { finishWorkoutThunk, startWorkoutThunk } from './workoutThunks'
@@ -131,7 +132,11 @@ describe('workout service persistence', () => {
       testDatabase,
     )
     await saveExerciseNotes(first.id, 'Keep a controlled tempo.', testDatabase)
+    await saveWorkoutNotes(workout.id, 'Increase the load next session.', testDatabase)
     await moveWorkoutExercise(workout.id, second.id, -1, testDatabase)
+    expect(await testDatabase.workoutSessions.get(workout.id)).toMatchObject({
+      notes: 'Increase the load next session.',
+    })
     expect(await listWorkoutExercises(workout.id, testDatabase)).toMatchObject([
       { id: second.id, order: 0 },
       { id: first.id, order: 1, notes: 'Keep a controlled tempo.' },
@@ -334,6 +339,18 @@ describe('workout service persistence', () => {
     expect(await testDatabase.workoutSessions.get(workout.id)).toEqual(workout)
   })
 
+  it('propagates a failed IndexedDB workout save without changing the record', async () => {
+    const workout = await makeInProgressWorkout(testDatabase)
+    vi.spyOn(testDatabase.workoutSessions, 'put').mockRejectedValueOnce(
+      new Error('Injected IndexedDB write failure'),
+    )
+
+    await expect(
+      saveWorkoutNotes(workout.id, 'New notes', testDatabase),
+    ).rejects.toThrow(/Injected IndexedDB write failure/)
+    expect(await testDatabase.workoutSessions.get(workout.id)).toEqual(workout)
+  })
+
   it('excludes workouts completed after the target workout started from previous performance', async () => {
     const exercise = await makeExercise(testDatabase)
     const baseTime = Date.now()
@@ -504,6 +521,51 @@ describe('workout service persistence', () => {
         testDatabase,
       ),
     ).rejects.toThrow(/in-progress/)
+
+    const completedSession = await testDatabase.workoutSessions.get(workout.id)
+    expect(completedSession).toBeDefined()
+    await expect(
+      updateWorkoutSession(
+        workout.id,
+        { name: 'Changed after completion' },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Completed workouts cannot be modified/)
+    await expect(
+      updateWorkoutSession(
+        workout.id,
+        { status: 'in_progress', completedAt: null },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Completed workouts cannot be modified/)
+    expect(await testDatabase.workoutSessions.get(workout.id)).toEqual(
+      completedSession,
+    )
+  })
+
+  it('rejects a completion timestamp earlier than the workout start', async () => {
+    const workout = await createWorkoutSession(
+      {
+        name: 'Chronology validation',
+        startedAt: '2026-01-02T10:00:00.000Z',
+        completedAt: null,
+        status: 'in_progress',
+        notes: '',
+      },
+      testDatabase,
+    )
+
+    await expect(
+      updateWorkoutSession(
+        workout.id,
+        {
+          status: 'completed',
+          completedAt: '2026-01-02T09:59:59.999Z',
+        },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/cannot be before its start time/)
+    expect(await testDatabase.workoutSessions.get(workout.id)).toEqual(workout)
   })
 
   it('validates invalid set repetitions and set numbers', async () => {

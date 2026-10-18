@@ -31,6 +31,12 @@ function validateSession(session: CreateWorkoutSessionInput): void {
       'In-progress workouts must have no completion time; completed workouts must have one.',
     )
   }
+  if (
+    session.completedAt !== null &&
+    Date.parse(session.completedAt) < Date.parse(session.startedAt)
+  ) {
+    throw new Error('Workout completion time cannot be before its start time.')
+  }
   if (typeof session.notes !== 'string') {
     throw new Error('Workout notes must be a string.')
   }
@@ -91,6 +97,9 @@ export async function updateWorkoutSession(
     const existing = await database.workoutSessions.get(id)
     if (!existing || existing.deletedAt !== null) {
       throw new Error(`Active workout session "${id}" was not found.`)
+    }
+    if (existing.status === 'completed') {
+      throw new Error('Completed workouts cannot be modified.')
     }
     const updated = { ...existing, ...changes, updatedAt: createTimestamp() }
     validateSession(updated)

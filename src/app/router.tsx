@@ -1,27 +1,35 @@
+import { createElement, lazy } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout'
-import DashboardPage from '../features/dashboard/DashboardPage'
-import NotFoundPage from '../features/not-found/NotFoundPage'
-import NutritionPage from '../features/nutrition/NutritionPage'
-import SavedMealsPage from '../features/nutrition/SavedMealsPage'
-import ActiveWorkoutPage from '../features/workouts/ActiveWorkoutPage'
-import WorkoutDetailsPage from '../features/workouts/WorkoutDetailsPage'
-import WorkoutPage from '../features/workouts/WorkoutPage'
-import DataManagementPage from '../features/data-management/DataManagementPage'
+
+const dashboardPage = lazy(() => import('../features/dashboard/DashboardPage'))
+const notFoundPage = lazy(() => import('../features/not-found/NotFoundPage'))
+const nutritionPage = lazy(() => import('../features/nutrition/NutritionPage'))
+const savedMealsPage = lazy(() => import('../features/nutrition/SavedMealsPage'))
+const activeWorkoutPage = lazy(
+  () => import('../features/workouts/ActiveWorkoutPage'),
+)
+const workoutDetailsPage = lazy(
+  () => import('../features/workouts/WorkoutDetailsPage'),
+)
+const workoutPage = lazy(() => import('../features/workouts/WorkoutPage'))
+const dataManagementPage = lazy(
+  () => import('../features/data-management/DataManagementPage'),
+)
 
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'progress', element: <DashboardPage /> },
-      { path: 'workouts', element: <WorkoutPage /> },
-      { path: 'workouts/active', element: <ActiveWorkoutPage /> },
-      { path: 'workouts/:workoutId', element: <WorkoutDetailsPage /> },
-      { path: 'nutrition', element: <NutritionPage /> },
-      { path: 'nutrition/meals', element: <SavedMealsPage /> },
-      { path: 'settings/data', element: <DataManagementPage /> },
-      { path: '*', element: <NotFoundPage /> },
+      { index: true, element: createElement(dashboardPage) },
+      { path: 'progress', element: createElement(dashboardPage) },
+      { path: 'workouts', element: createElement(workoutPage) },
+      { path: 'workouts/active', element: createElement(activeWorkoutPage) },
+      { path: 'workouts/:workoutId', element: createElement(workoutDetailsPage) },
+      { path: 'nutrition', element: createElement(nutritionPage) },
+      { path: 'nutrition/meals', element: createElement(savedMealsPage) },
+      { path: 'settings/data', element: createElement(dataManagementPage) },
+      { path: '*', element: createElement(notFoundPage) },
     ],
   },
 ])

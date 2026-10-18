@@ -441,6 +441,7 @@ function DataManagementPage() {
         onClose={() => {
           if (!busy) setReplaceConfirmationOpen(false)
         }}
+        closeBlocked={busy}
         title="Replace all local application data?"
         footer={
           <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">

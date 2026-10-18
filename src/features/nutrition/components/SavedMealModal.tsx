@@ -60,22 +60,21 @@ function SavedMealModal({
     }
   }, [open, initialMeal])
 
-  const parsedProtein = Math.max(0, Number(proteinG) || 0)
-  const parsedCarbs = Math.max(0, Number(carbsG) || 0)
-  const parsedFat = Math.max(0, Number(fatG) || 0)
-
-  const estimatedCalories = Math.round(
-    estimateCaloriesFromMacros({
-      proteinG: parsedProtein,
-      carbsG: parsedCarbs,
-      fatG: parsedFat,
-    }),
+  const parsedProtein = Number(proteinG)
+  const parsedCarbs = Number(carbsG)
+  const parsedFat = Number(fatG)
+  const macroValuesValid = [proteinG, carbsG, fatG].every(
+    (value) => value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0,
   )
-
-  const displayedCalories =
-    calorieSource === 'macro_estimate'
-      ? estimatedCalories
-      : Number(manualCalories) || 0
+  const estimatedCalories = macroValuesValid
+    ? Math.round(
+        estimateCaloriesFromMacros({
+          proteinG: parsedProtein,
+          carbsG: parsedCarbs,
+          fatG: parsedFat,
+        }),
+      )
+    : null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,27 +96,37 @@ function SavedMealModal({
     const numCarbs = Number(carbsG)
     const numFat = Number(fatG)
 
-    if (!Number.isFinite(numProtein) || numProtein < 0) {
+    if (proteinG.trim() === '' || !Number.isFinite(numProtein) || numProtein < 0) {
       setError('Protein must be a finite, non-negative number.')
       return
     }
-    if (!Number.isFinite(numCarbs) || numCarbs < 0) {
+    if (carbsG.trim() === '' || !Number.isFinite(numCarbs) || numCarbs < 0) {
       setError('Carbohydrates must be a finite, non-negative number.')
       return
     }
-    if (!Number.isFinite(numFat) || numFat < 0) {
+    if (fatG.trim() === '' || !Number.isFinite(numFat) || numFat < 0) {
       setError('Fat must be a finite, non-negative number.')
       return
     }
 
-    let calories = displayedCalories
+    let calories: number
     if (calorieSource === 'manual') {
       const numCal = Number(manualCalories)
-      if (!Number.isFinite(numCal) || numCal < 0) {
+      if (
+        manualCalories.trim() === '' ||
+        !Number.isFinite(numCal) ||
+        numCal < 0
+      ) {
         setError('Calories must be a finite, non-negative number.')
         return
       }
       calories = Math.round(numCal)
+    } else {
+      if (estimatedCalories === null) {
+        setError('Nutrition values must be valid before calories can be estimated.')
+        return
+      }
+      calories = estimatedCalories
     }
 
     setSaving(true)
@@ -148,6 +157,7 @@ function SavedMealModal({
     <Modal
       open={open}
       onClose={onClose}
+      closeBlocked={saving}
       title={initialMeal ? 'Edit Saved Meal' : 'Create Saved Meal'}
       footer={
         <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
@@ -265,12 +275,18 @@ function SavedMealModal({
               Calculated Calories
             </p>
             <p className="mt-1 text-2xl font-bold text-ink">
-              {estimatedCalories}{' '}
+              {estimatedCalories === null ? '—' : estimatedCalories}{' '}
               <span className="text-xs font-normal text-muted">kcal</span>
             </p>
-            <p className="mt-1 text-xs text-muted">
-              ({parsedProtein}g × 4) + ({parsedCarbs}g × 4) + ({parsedFat}g × 9)
-            </p>
+            {estimatedCalories === null ? (
+              <p className="mt-1 text-xs text-muted">
+                Enter valid, non-negative macros to estimate calories.
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-muted">
+                ({parsedProtein}g × 4) + ({parsedCarbs}g × 4) + ({parsedFat}g × 9)
+              </p>
+            )}
           </div>
         )}
       </form>

@@ -95,6 +95,7 @@ function NutritionPage() {
 
   const [todayDate] = useState(() => formatLocalDate(new Date()))
   const [summary, setSummary] = useState<DailyNutritionSummary | null>(null)
+  const [summaryDate, setSummaryDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [goals, setGoals] = useState<DailyNutritionGoals | null>(() =>
     getSavedNutritionGoals(),
@@ -112,11 +113,14 @@ function NutritionPage() {
   const loadData = useCallback(async (dateToLoad: string) => {
     const requestId = ++latestRequestId.current
     setLoading(true)
+    setSummary(null)
+    setSummaryDate(null)
     dispatch(clearNutritionError())
     try {
       const data = await loadDailyNutrition(dateToLoad)
       if (requestId === latestRequestId.current) {
         setSummary(data)
+        setSummaryDate(dateToLoad)
       }
     } catch (loadError) {
       if (requestId === latestRequestId.current) {
@@ -146,8 +150,9 @@ function NutritionPage() {
   }
 
   const handleSaveGoals = (newGoals: DailyNutritionGoals) => {
-    saveNutritionGoals(newGoals)
+    const persisted = saveNutritionGoals(newGoals)
     setGoals(newGoals)
+    return persisted
   }
 
   const handleDeleteLog = async () => {
@@ -169,6 +174,7 @@ function NutritionPage() {
   }
 
   const relativeBadge = getDateRelativeBadge(selectedDate)
+  const currentSummary = summaryDate === selectedDate ? summary : null
 
   return (
     <PageContainer>
@@ -225,7 +231,7 @@ function NutritionPage() {
               type="button"
               aria-label="Previous day"
               onClick={() => handleDateChange(shiftDate(selectedDate, -1))}
-              className="flex size-9 items-center justify-center rounded-lg border border-line text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
             >
               <ChevronLeft aria-hidden="true" size={18} />
             </button>
@@ -233,7 +239,7 @@ function NutritionPage() {
               type="button"
               aria-label="Next day"
               onClick={() => handleDateChange(shiftDate(selectedDate, 1))}
-              className="flex size-9 items-center justify-center rounded-lg border border-line text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
             >
               <ChevronRight aria-hidden="true" size={18} />
             </button>
@@ -310,30 +316,34 @@ function NutritionPage() {
           <p role="status" className="py-8 text-center text-sm text-muted">
             Calculating daily totals…
           </p>
-        ) : summary ? (
+        ) : reduxError ? (
+          <p className="py-8 text-center text-sm text-muted">
+            Daily totals are unavailable until the data can be loaded.
+          </p>
+        ) : currentSummary ? (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <SummaryMetric
                 label="Calories"
-                consumed={summary.totals.calories}
+                consumed={currentSummary.totals.calories}
                 target={goals?.calories}
                 unit="kcal"
               />
               <SummaryMetric
                 label="Protein"
-                consumed={summary.totals.proteinG}
+                consumed={currentSummary.totals.proteinG}
                 target={goals?.proteinG}
                 unit="g"
               />
               <SummaryMetric
                 label="Carbohydrates"
-                consumed={summary.totals.carbsG}
+                consumed={currentSummary.totals.carbsG}
                 target={goals?.carbsG}
                 unit="g"
               />
               <SummaryMetric
                 label="Fat"
-                consumed={summary.totals.fatG}
+                consumed={currentSummary.totals.fatG}
                 target={goals?.fatG}
                 unit="g"
               />
@@ -343,9 +353,14 @@ function NutritionPage() {
       </Card>
 
       {/* Meal Sections */}
+      {loading ? (
+        <p role="status" className="py-8 text-center text-sm text-muted">
+          Loading meals for this date…
+        </p>
+      ) : currentSummary ? (
       <div className="space-y-6">
         {MEAL_TYPES.map((type) => {
-          const section = summary?.sections[type]
+          const section = currentSummary.sections[type]
           const logs = section?.logs ?? []
           const totals = section?.totals ?? {
             calories: 0,
@@ -425,7 +440,7 @@ function NutritionPage() {
                           type="button"
                           aria-label={`Edit ${log.mealNameSnapshot}`}
                           onClick={() => setEditingLog(log)}
-                          className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                          className="flex size-11 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
                         >
                           <Edit2 aria-hidden="true" size={15} />
                         </button>
@@ -433,7 +448,7 @@ function NutritionPage() {
                           type="button"
                           aria-label={`Delete ${log.mealNameSnapshot}`}
                           onClick={() => setLogToDelete(log)}
-                          className="flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500"
+                          className="flex size-11 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500"
                         >
                           <Trash2 aria-hidden="true" size={15} />
                         </button>
@@ -446,6 +461,7 @@ function NutritionPage() {
           )
         })}
       </div>
+      ) : null}
 
       {/* Modals */}
       <LogMealModal
@@ -484,6 +500,7 @@ function NutritionPage() {
       <Modal
         open={Boolean(logToDelete)}
         onClose={() => setLogToDelete(null)}
+        closeBlocked={deleting}
         title="Delete Logged Meal"
         footer={
           <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">

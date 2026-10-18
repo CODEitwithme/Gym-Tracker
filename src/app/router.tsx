@@ -14,6 +14,7 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'progress', element: <DashboardPage /> },
       { path: 'workouts', element: <WorkoutPage /> },
       { path: 'workouts/active', element: <ActiveWorkoutPage /> },
       { path: 'workouts/:workoutId', element: <WorkoutDetailsPage /> },

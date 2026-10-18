@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Edit2, Plus, Trash2, UtensilsCrossed } from 'lucide-react'
 import { Badge, Button, Card, EmptyState, Input, Modal } from '../../components/common'
@@ -24,47 +24,38 @@ function SavedMealsPage() {
   const [mealToDelete, setMealToDelete] = useState<SavedMeal | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [quickLogMeal, setQuickLogMeal] = useState<SavedMeal | null>(null)
+  const latestRequestId = useRef(0)
 
-  const loadMeals = useCallback(async (searchQuery = query) => {
+  const loadMeals = useCallback(async (searchQuery: string) => {
+    const requestId = ++latestRequestId.current
     setLoading(true)
     setError(null)
     try {
       const data = await fetchSavedMeals(searchQuery)
-      setMeals(data)
+      if (requestId === latestRequestId.current) setMeals(data)
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : 'Could not load saved meals library.',
-      )
+      if (requestId === latestRequestId.current) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Could not load saved meals library.',
+        )
+      }
     } finally {
-      setLoading(false)
+      if (requestId === latestRequestId.current) setLoading(false)
     }
-  }, [query])
+  }, [])
 
   useEffect(() => {
     let cancelled = false
-    void Promise.resolve().then(async () => {
-      setLoading(true)
-      try {
-        const data = await fetchSavedMeals(query)
-        if (!cancelled) setMeals(data)
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : 'Could not load saved meals library.',
-          )
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    void Promise.resolve().then(() => {
+      if (!cancelled) void loadMeals(query)
     })
     return () => {
       cancelled = true
+      latestRequestId.current += 1
     }
-  }, [query])
+  }, [loadMeals, query])
 
   const handleSaveMeal = async (input: {
     name: string
@@ -80,7 +71,7 @@ function SavedMealsPage() {
     } else {
       await createMeal(input)
     }
-    await loadMeals()
+    await loadMeals(query)
   }
 
   const handleDeleteMeal = async () => {
@@ -89,7 +80,7 @@ function SavedMealsPage() {
     try {
       await removeSavedMeal(mealToDelete.id)
       setMealToDelete(null)
-      await loadMeals()
+      await loadMeals(query)
     } catch (deleteError) {
       setError(
         deleteError instanceof Error
@@ -142,7 +133,7 @@ function SavedMealsPage() {
           <Button
             size="small"
             variant="outline"
-            onClick={() => void loadMeals()}
+            onClick={() => void loadMeals(query)}
           >
             Retry
           </Button>
@@ -163,7 +154,7 @@ function SavedMealsPage() {
         <p role="status" className="py-16 text-center text-sm text-muted">
           Loading saved meals…
         </p>
-      ) : meals.length === 0 ? (
+      ) : error && meals.length === 0 ? null : meals.length === 0 ? (
         <Card>
           <EmptyState
             icon={UtensilsCrossed}
@@ -192,9 +183,9 @@ function SavedMealsPage() {
             <Card key={meal.id} className="flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h2 className="font-semibold text-ink">{meal.name}</h2>
-                    <p className="text-xs text-muted">{meal.servingDescription}</p>
+                  <div className="min-w-0">
+                    <h2 className="break-words font-semibold text-ink">{meal.name}</h2>
+                    <p className="break-words text-xs text-muted">{meal.servingDescription}</p>
                   </div>
                   <Badge
                     variant={
@@ -247,7 +238,7 @@ function SavedMealsPage() {
                       setEditingMeal(meal)
                       setIsModalOpen(true)
                     }}
-                    className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                    className="flex size-11 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     <Edit2 aria-hidden="true" size={16} />
                   </button>
@@ -255,7 +246,7 @@ function SavedMealsPage() {
                     type="button"
                     aria-label={`Delete ${meal.name}`}
                     onClick={() => setMealToDelete(meal)}
-                    className="flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500"
+                    className="flex size-11 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500"
                   >
                     <Trash2 aria-hidden="true" size={16} />
                   </button>
@@ -287,6 +278,7 @@ function SavedMealsPage() {
       <Modal
         open={Boolean(mealToDelete)}
         onClose={() => setMealToDelete(null)}
+        closeBlocked={deleting}
         title="Delete Saved Meal"
         footer={
           <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">

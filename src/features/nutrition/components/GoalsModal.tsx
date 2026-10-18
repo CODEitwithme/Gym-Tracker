@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { Button, Input, Modal } from '../../../components/common'
 import type { DailyNutritionGoals } from '../types'
 
@@ -6,7 +7,7 @@ interface GoalsModalProps {
   open: boolean
   onClose: () => void
   currentGoals: DailyNutritionGoals | null
-  onSave: (goals: DailyNutritionGoals) => void
+  onSave: (goals: DailyNutritionGoals) => boolean
 }
 
 function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
@@ -23,38 +24,41 @@ function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
     currentGoals ? String(currentGoals.fatG) : '65',
   )
   const [error, setError] = useState<string | null>(null)
+  const [persistenceWarning, setPersistenceWarning] = useState(false)
 
-  const handleSave = () => {
+  const handleSave = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     const parsedCalories = Number(calories)
     const parsedProtein = Number(proteinG)
     const parsedCarbs = Number(carbsG)
     const parsedFat = Number(fatG)
 
-    if (!Number.isFinite(parsedCalories) || parsedCalories < 0) {
+    if (calories.trim() === '' || !Number.isFinite(parsedCalories) || parsedCalories < 0) {
       setError('Calories target must be a non-negative number.')
       return
     }
-    if (!Number.isFinite(parsedProtein) || parsedProtein < 0) {
+    if (proteinG.trim() === '' || !Number.isFinite(parsedProtein) || parsedProtein < 0) {
       setError('Protein target must be a non-negative number.')
       return
     }
-    if (!Number.isFinite(parsedCarbs) || parsedCarbs < 0) {
+    if (carbsG.trim() === '' || !Number.isFinite(parsedCarbs) || parsedCarbs < 0) {
       setError('Carbohydrates target must be a non-negative number.')
       return
     }
-    if (!Number.isFinite(parsedFat) || parsedFat < 0) {
+    if (fatG.trim() === '' || !Number.isFinite(parsedFat) || parsedFat < 0) {
       setError('Fat target must be a non-negative number.')
       return
     }
 
-    onSave({
+    const persisted = onSave({
       calories: Math.round(parsedCalories),
       proteinG: Math.round(parsedProtein),
       carbsG: Math.round(parsedCarbs),
       fatG: Math.round(parsedFat),
     })
     setError(null)
-    onClose()
+    setPersistenceWarning(!persisted)
+    if (persisted) onClose()
   }
 
   return (
@@ -67,11 +71,17 @@ function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save targets</Button>
+          <Button type="submit" form="nutrition-goals-form">
+            Save targets
+          </Button>
         </div>
       }
     >
-      <div className="space-y-4">
+      <form
+        id="nutrition-goals-form"
+        onSubmit={handleSave}
+        className="space-y-4"
+      >
         <p className="text-sm text-muted">
           Set your personal daily targets. These will be used to show your progress
           on the nutrition dashboard.
@@ -80,6 +90,12 @@ function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
         {error && (
           <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">
             {error}
+          </p>
+        )}
+        {persistenceWarning && (
+          <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+            Targets are updated for this session, but browser storage could not
+            save them. They may not be available after you close or refresh the app.
           </p>
         )}
 
@@ -122,10 +138,9 @@ function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
             required
           />
         </div>
-      </div>
+      </form>
     </Modal>
   )
 }
 
 export default GoalsModal
-

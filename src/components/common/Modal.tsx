@@ -6,21 +6,46 @@ import type { MouseEvent, ReactNode } from 'react'
 type ModalProps = {
   open: boolean
   onClose: () => void
+  closeBlocked?: boolean
   title: ReactNode
   children: ReactNode
   footer?: ReactNode
 }
 
-function Modal({ open, onClose, title, children, footer }: ModalProps) {
+const openModalIds: string[] = []
+let bodyOverflowBeforeModal: string | null = null
+
+function Modal({
+  open,
+  onClose,
+  closeBlocked = false,
+  title,
+  children,
+  footer,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
+  const modalId = useId()
+  const onCloseRef = useRef(onClose)
+  const closeBlockedRef = useRef(closeBlocked)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    closeBlockedRef.current = closeBlocked
+  }, [closeBlocked])
 
   useEffect(() => {
     if (!open) return
 
     const previouslyFocused = document.activeElement
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (openModalIds.length === 0) {
+      bodyOverflowBeforeModal = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+    }
+    openModalIds.push(modalId)
 
     const getFocusableElements = () =>
       dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -31,9 +56,11 @@ function Modal({ open, onClose, title, children, footer }: ModalProps) {
     ;(firstFocusable ?? dialogRef.current)?.focus()
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (openModalIds.at(-1) !== modalId) return
       if (event.key === 'Escape') {
+        if (closeBlockedRef.current) return
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -59,15 +86,31 @@ function Modal({ open, onClose, title, children, footer }: ModalProps) {
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus()
+      const index = openModalIds.lastIndexOf(modalId)
+      if (index !== -1) openModalIds.splice(index, 1)
+      if (openModalIds.length === 0) {
+        document.body.style.overflow = bodyOverflowBeforeModal ?? ''
+        bodyOverflowBeforeModal = null
+      }
+      if (
+        previouslyFocused instanceof HTMLElement &&
+        previouslyFocused.isConnected
+      ) {
+        previouslyFocused.focus()
+      }
     }
-  }, [onClose, open])
+  }, [modalId, open])
 
   if (!open || typeof document === 'undefined') return null
 
   const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) onClose()
+    if (
+      event.target === event.currentTarget &&
+      !closeBlocked &&
+      openModalIds.at(-1) === modalId
+    ) {
+      onCloseRef.current()
+    }
   }
 
   return createPortal(
@@ -89,9 +132,12 @@ function Modal({ open, onClose, title, children, footer }: ModalProps) {
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (!closeBlocked) onCloseRef.current()
+            }}
+            disabled={closeBlocked}
             aria-label="Close dialog"
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <X aria-hidden="true" size={18} />
           </button>

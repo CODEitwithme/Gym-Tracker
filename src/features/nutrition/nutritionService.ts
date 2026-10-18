@@ -161,39 +161,37 @@ export async function removeSavedMeal(
 let memoryGoals: DailyNutritionGoals | null = null
 
 export function getSavedNutritionGoals(): DailyNutritionGoals | null {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    try {
-      const raw = window.localStorage.getItem(NUTRITION_GOALS_STORAGE_KEY)
-      if (!raw) return null
-      const parsed = JSON.parse(raw) as Partial<DailyNutritionGoals>
-      if (
-        typeof parsed === 'object' &&
-        parsed !== null &&
-        Number.isFinite(parsed.calories) &&
-        (parsed.calories ?? 0) >= 0 &&
-        Number.isFinite(parsed.proteinG) &&
-        (parsed.proteinG ?? 0) >= 0 &&
-        Number.isFinite(parsed.carbsG) &&
-        (parsed.carbsG ?? 0) >= 0 &&
-        Number.isFinite(parsed.fatG) &&
-        (parsed.fatG ?? 0) >= 0
-      ) {
-        return {
-          calories: Math.round(parsed.calories ?? 0),
-          proteinG: Math.round(parsed.proteinG ?? 0),
-          carbsG: Math.round(parsed.carbsG ?? 0),
-          fatG: Math.round(parsed.fatG ?? 0),
-        }
+  if (typeof window === 'undefined') return memoryGoals
+  try {
+    const raw = window.localStorage.getItem(NUTRITION_GOALS_STORAGE_KEY)
+    if (!raw) return memoryGoals
+    const parsed = JSON.parse(raw) as Partial<DailyNutritionGoals>
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      Number.isFinite(parsed.calories) &&
+      (parsed.calories ?? 0) >= 0 &&
+      Number.isFinite(parsed.proteinG) &&
+      (parsed.proteinG ?? 0) >= 0 &&
+      Number.isFinite(parsed.carbsG) &&
+      (parsed.carbsG ?? 0) >= 0 &&
+      Number.isFinite(parsed.fatG) &&
+      (parsed.fatG ?? 0) >= 0
+    ) {
+      return {
+        calories: Math.round(parsed.calories ?? 0),
+        proteinG: Math.round(parsed.proteinG ?? 0),
+        carbsG: Math.round(parsed.carbsG ?? 0),
+        fatG: Math.round(parsed.fatG ?? 0),
       }
-      return null
-    } catch {
-      return null
     }
+    return memoryGoals
+  } catch {
+    return memoryGoals
   }
-  return memoryGoals
 }
 
-export function saveNutritionGoals(goals: DailyNutritionGoals): void {
+export function saveNutritionGoals(goals: DailyNutritionGoals): boolean {
   const normalized: DailyNutritionGoals = {
     calories: Math.max(0, Math.round(goals.calories)),
     proteinG: Math.max(0, Math.round(goals.proteinG)),
@@ -201,14 +199,14 @@ export function saveNutritionGoals(goals: DailyNutritionGoals): void {
     fatG: Math.max(0, Math.round(goals.fatG)),
   }
   memoryGoals = normalized
-  if (typeof window !== 'undefined' && window.localStorage) {
-    try {
-      window.localStorage.setItem(
-        NUTRITION_GOALS_STORAGE_KEY,
-        JSON.stringify(normalized),
-      )
-    } catch {
-      // Ignore quota errors
-    }
+  if (typeof window === 'undefined') return false
+  try {
+    window.localStorage.setItem(
+      NUTRITION_GOALS_STORAGE_KEY,
+      JSON.stringify(normalized),
+    )
+    return true
+  } catch {
+    return false
   }
 }

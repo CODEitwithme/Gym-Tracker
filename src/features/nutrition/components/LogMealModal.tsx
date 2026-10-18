@@ -72,13 +72,16 @@ function LogMealModal({
         setPortionPercent('100')
         setError(null)
         setQuery('')
+        setSelectedMeal(null)
         setLoadingMeals(true)
         return fetchSavedMeals('')
       })
       .then((meals) => {
         if (!cancelled && meals) {
           setSavedMeals(meals)
-          setSelectedMeal((prev) => (meals.length > 0 && !prev ? meals[0] : prev))
+          setSelectedMeal((previous) =>
+            meals.find((meal) => meal.id === previous?.id) ?? meals[0] ?? null,
+          )
         }
       })
       .catch(() => {
@@ -186,6 +189,7 @@ function LogMealModal({
       <Modal
         open={open}
         onClose={onClose}
+        closeBlocked={saving}
         title="Log a Meal"
         footer={
           <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
@@ -209,17 +213,18 @@ function LogMealModal({
             </p>
           )}
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink">
+          <fieldset>
+            <legend className="mb-1.5 block text-sm font-medium text-ink">
               Meal category
-            </label>
+            </legend>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {MEAL_TYPES.map((type) => (
                 <button
                   key={type}
                   type="button"
+                  aria-pressed={mealType === type}
                   onClick={() => setMealType(type)}
-                  className={`flex min-h-10 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
+                  className={`flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
                     mealType === type
                       ? 'border-accent bg-accent text-white'
                       : 'border-line bg-panel text-ink hover:bg-hover'
@@ -229,13 +234,13 @@ function LogMealModal({
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-ink">
+              <p className="text-sm font-medium text-ink">
                 Select saved meal
-              </label>
+              </p>
               <Button
                 size="small"
                 variant="ghost"
@@ -291,8 +296,8 @@ function LogMealModal({
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span>{meal.name}</span>
-                          <span className="text-xs font-normal text-muted">
+                          <span className="min-w-0 break-words">{meal.name}</span>
+                          <span className="shrink-0 text-xs font-normal text-muted">
                             {meal.calories} kcal
                           </span>
                         </div>

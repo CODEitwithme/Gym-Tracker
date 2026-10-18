@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from 'lucide-react'
 import type { ExerciseSet } from '../types'
 import type { PreviousPerformance, WorkoutExerciseDetails } from '../workoutService'
-import { Button, Card, Input } from '../../../components/common'
+import { Button, Card, Input, Modal } from '../../../components/common'
 
 type WorkoutExerciseCardProps = {
   details: WorkoutExerciseDetails
@@ -45,6 +45,7 @@ function SetEditor({
   const [setNumber, setSetNumber] = useState(String(set.setNumber))
   const [error, setError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   const save = async () => {
     const parsedWeight = Number(weight)
@@ -161,11 +162,62 @@ function SetEditor({
           icon={Trash2}
           aria-label={`Remove set ${set.setNumber}`}
           disabled={saving || dirty}
-          onClick={() => void onRemove(set.id)}
+          onClick={() => {
+            setError(null)
+            setConfirmRemove(true)
+          }}
         >
           Remove
         </Button>
       </div>
+      <Modal
+        open={confirmRemove}
+        onClose={() => setConfirmRemove(false)}
+        closeBlocked={saving}
+        title={`Remove set ${set.setNumber}?`}
+        footer={
+          <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
+            <Button
+              variant="ghost"
+              disabled={saving}
+              onClick={() => setConfirmRemove(false)}
+            >
+              Keep set
+            </Button>
+            <Button
+              variant="danger"
+              loading={saving}
+              disabled={saving}
+              onClick={() => {
+                void onRemove(set.id)
+                  .then(() => {
+                    setConfirmRemove(false)
+                    setError(null)
+                  })
+                  .catch((removeError: unknown) => {
+                    setError(
+                      removeError instanceof Error
+                        ? removeError.message
+                        : 'Could not remove set. Please retry.',
+                    )
+                  })
+              }}
+            >
+              Remove set
+            </Button>
+          </div>
+        }
+      >
+        {error && (
+          <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <p className="text-sm leading-6 text-muted">
+          This removes {set.weightKg} kg × {set.reps} reps from the active workout.
+          The record will be soft deleted.
+        </p>
+      </Modal>
     </div>
   )
 }
@@ -210,7 +262,7 @@ function WorkoutExerciseCard({
             aria-label={`Move ${workoutExercise.exerciseNameSnapshot} up`}
             disabled={position === 0 || saving}
             onClick={() => void onMove(workoutExercise.id, -1)}
-            className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
+            className="flex size-11 items-center justify-center rounded-lg text-muted hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
           >
             <ArrowUp aria-hidden="true" size={17} />
           </button>
@@ -219,7 +271,7 @@ function WorkoutExerciseCard({
             aria-label={`Move ${workoutExercise.exerciseNameSnapshot} down`}
             disabled={position === count - 1 || saving}
             onClick={() => void onMove(workoutExercise.id, 1)}
-            className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
+            className="flex size-11 items-center justify-center rounded-lg text-muted hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
           >
             <ArrowDown aria-hidden="true" size={17} />
           </button>

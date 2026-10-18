@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GymTrackerDatabase } from '../../db/database'
 import { createUUID, formatLocalDate } from '../../lib/dateTime'
 import {
@@ -25,6 +25,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  vi.unstubAllGlobals()
   testDatabase.close()
   await testDatabase.delete()
 })
@@ -618,19 +619,38 @@ describe('daily nutrition summary calculations and totals', () => {
 
 describe('daily nutrition goals storage', () => {
   it('saves and reads user targets safely', () => {
-    saveNutritionGoals({
+    const goals = {
       calories: 2400,
       proteinG: 180,
       carbsG: 250,
       fatG: 70,
-    })
+    }
+    const persisted = saveNutritionGoals(goals)
 
     const retrieved = getSavedNutritionGoals()
-    expect(retrieved).toEqual({
-      calories: 2400,
-      proteinG: 180,
-      carbsG: 250,
-      fatG: 70,
+    expect(retrieved).toEqual(goals)
+    if (typeof window === 'undefined') {
+      expect(persisted).toBe(false)
+    }
+  })
+
+  it('reports browser storage failures while retaining the in-session values', () => {
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('Storage unavailable')
+        },
+      },
     })
+    const goals = {
+      calories: 2100,
+      proteinG: 140,
+      carbsG: 230,
+      fatG: 75,
+    }
+
+    expect(saveNutritionGoals(goals)).toBe(false)
+    expect(getSavedNutritionGoals()).toEqual(goals)
   })
 })

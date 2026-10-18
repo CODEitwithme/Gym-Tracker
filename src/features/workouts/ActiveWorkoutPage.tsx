@@ -270,7 +270,8 @@ function ActiveWorkoutPage() {
   }
 
   const removeSet = async (setId: string) => {
-    await runSave(() => deleteWorkoutSet(setId), 'Set removed.')
+    const succeeded = await runSave(() => deleteWorkoutSet(setId), 'Set removed.')
+    if (!succeeded) throw new Error('Could not remove set. Please retry.')
   }
 
   const saveName = async () => {
@@ -514,6 +515,7 @@ function ActiveWorkoutPage() {
       <Modal
         open={finishOpen}
         onClose={() => setFinishOpen(false)}
+        closeBlocked={saving}
         title="Finish this workout?"
         footer={
           <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">

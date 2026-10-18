@@ -69,6 +69,7 @@ function ExercisePickerModal({
       .then(() => {
         if (cancelled) return undefined
         setLoading(true)
+        setError(null)
         return findExercises(query)
       })
       .then((results) => {
@@ -134,7 +135,12 @@ function ExercisePickerModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add an exercise">
+    <Modal
+      open={open}
+      onClose={onClose}
+      closeBlocked={creating || addingId !== null}
+      title="Add an exercise"
+    >
       <div className="space-y-5">
         <Input
           label="Search exercise library"

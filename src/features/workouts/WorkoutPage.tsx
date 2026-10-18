@@ -132,7 +132,9 @@ function WorkoutPage() {
               Recent workouts
             </h2>
           </div>
-          <Badge variant="default">{history.length} completed</Badge>
+          {!historyLoading && !historyError && (
+            <Badge variant="default">{history.length} completed</Badge>
+          )}
         </div>
         {historyLoading ? (
           <p className="py-10 text-center text-sm text-muted" role="status">

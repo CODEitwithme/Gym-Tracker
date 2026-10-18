@@ -139,6 +139,7 @@ function EditMealLogModal({
     <Modal
       open={open}
       onClose={onClose}
+      closeBlocked={saving || deleting}
       title="Edit Logged Meal"
       footer={
         <div className="flex flex-col-reverse justify-between gap-2 sm:flex-row sm:items-center">
@@ -187,17 +188,18 @@ function EditMealLogModal({
           </p>
         </div>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-ink">
+        <fieldset>
+          <legend className="mb-1.5 block text-sm font-medium text-ink">
             Meal category
-          </label>
+          </legend>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {MEAL_TYPES.map((type) => (
               <button
                 key={type}
                 type="button"
+                aria-pressed={mealType === type}
                 onClick={() => setMealType(type)}
-                className={`flex min-h-10 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
+                className={`flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
                   mealType === type
                     ? 'border-accent bg-accent text-white'
                     : 'border-line bg-panel text-ink hover:bg-hover'
@@ -207,7 +209,7 @@ function EditMealLogModal({
               </button>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Input

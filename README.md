@@ -69,27 +69,29 @@ npm run preview
 The preview command serves the built app locally; it does not deploy the
 application.
 
-## Static hosting and client-side routes
+## Vercel deployment and client-side routes
 
 The app uses React Router browser-history routes, including `/progress`,
-`/workouts`, `/nutrition`, and `/settings/data`. Configure the static host to
-serve the built `index.html` for requests to application routes that do not
-match a static asset. This SPA fallback is required for direct navigation and
-refresh; it should not rewrite missing JavaScript, CSS, or other asset requests
-to HTML.
+`/workouts`, `/workouts/active`, `/workouts/:workoutId`, `/nutrition`,
+`/nutrition/meals`, and `/settings/data`. The root-level `vercel.json` sends
+extension-free requests to `index.html`, which allows these routes (and unknown
+routes handled by the app) to load directly or after refresh. Paths containing
+a dot are not rewritten, so static asset requests are not sent back as HTML.
 
-For example, an Nginx static-site location can use:
+To deploy on Vercel, import the GitHub repository and use the repository root,
+the Vite framework preset, `npm run build` as the build command, and `dist` as
+the output directory. Vercel can use the checked-in `package-lock.json` to
+install dependencies. No environment variables or client-side secrets are
+required for this frontend.
 
-```nginx
-location / {
-    try_files $uri $uri/ /index.html;
-}
-```
+The production build is written to `dist/`. Preview it locally with
+`npm run preview`; this does not deploy the application.
 
-Upload the contents of `dist/` to the configured static document root. Hosting
-configuration differs by provider; set its equivalent single-page application
-fallback to `/index.html` and verify direct route requests after publishing.
-No live deployment is performed by this repository's build or preview scripts.
+Workout, exercise, meal, and log records remain in browser IndexedDB, scoped to
+the browser profile and deployed origin. The app has no backend, account, or
+cross-browser/device synchronization. Clearing browser/site data can erase
+records; export backups from **Settings → Data management** and store them
+safely.
 
 ## Project structure
 
@@ -110,4 +112,4 @@ src/
     not-found/          Unknown-route page
 ```
 
-No environment variables or client-side secrets are required for the local MVP.
+No environment variables or client-side secrets are required for the MVP.

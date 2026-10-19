@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Download, FileArchive, FileSpreadsheet, ShieldCheck } from 'lucide-react'
+import { Download, Dumbbell, FileArchive, FileSpreadsheet, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, Modal } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
@@ -24,6 +24,7 @@ import {
 import { createCsvExport, type CsvExportKind } from './csvExport'
 import { downloadTextFile } from './download'
 import { formatLocalDate } from '../../lib/dateTime'
+import { removeDemoData, seedDemoData } from './demoDataService'
 
 const csvOptions: Array<{ kind: CsvExportKind; label: string; filename: string }> = [
   {
@@ -79,6 +80,9 @@ function DataManagementPage() {
   const [operationError, setOperationError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [replaceConfirmationOpen, setReplaceConfirmationOpen] = useState(false)
+  const [demoConfirmation, setDemoConfirmation] = useState<'load' | 'remove' | null>(
+    null,
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const exportBackup = async () => {
@@ -213,6 +217,52 @@ function DataManagementPage() {
     }
   }
 
+  const loadDemoHistory = async () => {
+    if (busy) return
+    setBusy(true)
+    setOperationError(null)
+    setStatusMessage(null)
+    try {
+      const result = await seedDemoData()
+      setDemoConfirmation(null)
+      setStatusMessage(
+        result.alreadyLoaded
+          ? `Demo history is already loaded for ${result.startDate} through ${result.endDate}; no duplicate records were added.`
+          : `Loaded fictional demo history for ${result.startDate} through ${result.endDate}: ${result.workoutSessions} workouts, ${result.workoutExercises} workout exercises, ${result.exerciseSets} sets, ${result.exercises} demo exercises, ${result.savedMeals} saved meals, and ${result.mealLogs} meal logs.`,
+      )
+      void dispatch(loadDashboardThunk(period))
+    } catch (seedError) {
+      setOperationError(`Demo data could not be loaded: ${errorMessage(seedError)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const cleanDemoHistory = async () => {
+    if (busy) return
+    setBusy(true)
+    setOperationError(null)
+    setStatusMessage(null)
+    try {
+      const result = await removeDemoData()
+      setDemoConfirmation(null)
+      const removed = Object.values(result.removed).reduce(
+        (total, count) => total + count,
+        0,
+      )
+      setStatusMessage(
+        removed === 0 && result.preserved === 0
+          ? 'No demo records created by this feature are currently tracked.'
+          : `Removed ${removed} tracked demo records.${result.preserved > 0 ? ` Preserved ${result.preserved} records that were changed or are still referenced by other data; you can retry removal after resolving those references.` : ''}`,
+      )
+      void dispatch(loadDashboardThunk(period))
+    } catch (cleanupError) {
+      setOperationError(`Demo data could not be removed: ${errorMessage(cleanupError)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const preview = selectedBackup ? summarizeBackup(selectedBackup) : null
   const appVersionWarning =
     preview && preview.appVersion !== CURRENT_APP_VERSION
@@ -245,6 +295,50 @@ function DataManagementPage() {
       )}
 
       <div className="space-y-6">
+        <section aria-labelledby="demo-data-title">
+          <Card
+            title="Seven days of demo history"
+            description="Add realistic workouts and nutrition history to exercise the dashboard, progress analytics, and charts."
+            actions={<Badge variant="warning">Fictional data</Badge>}
+          >
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="min-w-0">
+                <h2 id="demo-data-title" className="sr-only">
+                  Demo history
+                </h2>
+                <p className="text-sm leading-6 text-muted">
+                  This adds clearly labeled fictional workouts, exercises, saved
+                  meals, and meal logs covering today and the preceding six local
+                  calendar days. Existing records are not replaced or reset.
+                  Loading again will not create duplicates.
+                </p>
+                <p className="mt-2 text-sm font-medium text-amber-800">
+                  Demo records are written to this browser only after you confirm.
+                  Removing demo data affects only records tracked by this feature.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                <Button
+                  size="large"
+                  icon={Dumbbell}
+                  disabled={busy}
+                  onClick={() => setDemoConfirmation('load')}
+                >
+                  Load 7 Days of Demo Data
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={Trash2}
+                  disabled={busy}
+                  onClick={() => setDemoConfirmation('remove')}
+                >
+                  Remove demo data
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </section>
+
         <section aria-labelledby="full-backup-title">
           <Card
             title="Full JSON backup"
@@ -477,6 +571,69 @@ function DataManagementPage() {
             transaction. If a write fails, the transaction is rolled back.
           </p>
         </div>
+      </Modal>
+
+      <Modal
+        open={demoConfirmation !== null}
+        onClose={() => {
+          if (!busy) setDemoConfirmation(null)
+        }}
+        closeBlocked={busy}
+        title={
+          demoConfirmation === 'remove'
+            ? 'Remove tracked demo data?'
+            : 'Load fictional demo data?'
+        }
+        footer={
+          <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setDemoConfirmation(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={demoConfirmation === 'remove' ? 'danger' : 'primary'}
+              loading={busy}
+              disabled={busy}
+              onClick={() => {
+                if (demoConfirmation === 'remove') {
+                  void cleanDemoHistory()
+                } else if (demoConfirmation === 'load') {
+                  void loadDemoHistory()
+                }
+              }}
+            >
+              {demoConfirmation === 'remove' ? 'Remove tracked demo data' : 'Load demo data'}
+            </Button>
+          </div>
+        }
+      >
+        {demoConfirmation === 'remove' ? (
+          <div className="space-y-3 text-sm leading-6 text-muted">
+            <p>
+              Only demo records listed in this browser&apos;s demo manifest will
+              be considered. Records that have changed or are referenced by
+              user-created data will be preserved.
+            </p>
+            <p className="font-semibold text-ink">
+              Your workouts, exercises, meals, and nutrition logs will not be
+              removed.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 text-sm leading-6 text-muted">
+            <p>
+              This creates fictional demo workouts and nutrition records for
+              today and the preceding six local calendar days.
+            </p>
+            <p className="font-semibold text-ink">
+              Existing records will not be replaced or deleted. Confirm to add
+              the demo records to this browser&apos;s database.
+            </p>
+          </div>
+        )}
       </Modal>
     </PageContainer>
   )

@@ -16,6 +16,7 @@ import {
   assertLocalDate,
   assertNonBlank,
 } from '../../lib/validation'
+import type { UUID } from '../../types/records'
 import { db } from '../database'
 import type { GymTrackerDatabase } from '../database'
 
@@ -25,6 +26,7 @@ export type CreateSavedMealInput = {
   name: string
   servingDescription: string
   calorieSource: CalorieSource
+  id?: UUID
 } & MealMacros &
   (
     | { calorieSource: 'manual'; calories: number }
@@ -49,6 +51,7 @@ export interface CreateMealLogInput {
   consumedAt: string
   mealType: MealType
   portionPercent: number
+  id?: UUID
 }
 
 export type MealLogChanges = Partial<
@@ -109,7 +112,7 @@ export async function createSavedMeal(
   const now = createTimestamp()
   const meal: SavedMeal = {
     ...savedMealValues(input),
-    id: createUUID(),
+    id: input.id ?? createUUID(),
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
@@ -215,7 +218,7 @@ export async function createMealLog(
       )
       const mealLog: MealLog = {
         ...input,
-        id: createUUID(),
+        id: input.id ?? createUUID(),
         mealNameSnapshot: savedMeal.name,
         localDate: formatLocalDate(new Date(input.consumedAt)),
         nutritionSnapshot,

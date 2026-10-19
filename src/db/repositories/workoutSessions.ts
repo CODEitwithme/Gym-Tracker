@@ -1,3 +1,4 @@
+import type { UUID } from '../../types/records'
 import type { GymTrackerDatabase } from '../database'
 import { db } from '../database'
 import type { WorkoutSession, WorkoutStatus } from '../../features/workouts/types'
@@ -10,7 +11,7 @@ import {
 export type CreateWorkoutSessionInput = Pick<
   WorkoutSession,
   'name' | 'startedAt' | 'completedAt' | 'status' | 'notes'
->
+> & { id?: UUID }
 
 export type WorkoutSessionChanges = Partial<CreateWorkoutSessionInput>
 
@@ -50,7 +51,7 @@ export async function createWorkoutSession(
   const now = createTimestamp()
   const session: WorkoutSession = {
     ...input,
-    id: createUUID(),
+    id: input.id ?? createUUID(),
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

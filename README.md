@@ -10,6 +10,8 @@ It does not require an account or a backend.
 - Workout and nutrition records are stored in IndexedDB in the browser profile
   and origin where the app is used. This MVP has no account-based cloud sync,
   backend, or cross-device synchronization.
+- The demo feature stores only its record-ID and snapshot manifest in browser
+  local storage so its cleanup action can identify its own records.
 - Clearing browser/site data can erase records. Browser storage may also be
   evicted, and is not a guaranteed permanent backup.
 - Private browsing sessions and different browsers or devices may not share
@@ -24,6 +26,13 @@ It does not require an account or a backend.
 - Restore supports merging records and replacing all local application
   records. Replacement requires confirmation. Review the selected backup
   carefully and keep a separate current backup before replacing local data.
+- To test the dashboard and history, open **Settings → Data management** and
+  choose **Load 7 Days of Demo Data**. After confirmation, this adds fictional
+  workouts and nutrition records for today and the preceding six local calendar
+  days; it does not seed automatically or overwrite existing records. The
+  separate **Remove demo data** action removes only unchanged records tracked
+  by the browser's demo manifest and preserves records that have been edited or
+  referenced by other data.
 
 Data is stored locally by this application; this README makes no claim that it
 is encrypted by Gym Tracker.
@@ -95,7 +104,7 @@ src/
   types/               Shared record types
   features/
     dashboard/         Dashboard and progress analytics
-    data-management/   JSON backup/restore and CSV reports
+    data-management/   Demo data, JSON backup/restore, and CSV reports
     nutrition/         Daily nutrition and saved meals
     workouts/          Workout entry, history, and details
     not-found/          Unknown-route page

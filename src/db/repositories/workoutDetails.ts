@@ -8,10 +8,12 @@ import {
   assertNonNegativeInteger,
   assertPositiveInteger,
 } from '../../lib/validation'
+import type { UUID } from '../../types/records'
 import { db } from '../database'
 import type { GymTrackerDatabase } from '../database'
 
 export interface AddWorkoutExerciseInput {
+  id?: UUID
   workoutId: string
   exerciseId: string
   notes?: string
@@ -24,7 +26,7 @@ export type WorkoutExerciseChanges = Partial<
 export type AddExerciseSetInput = Pick<
   ExerciseSet,
   'workoutExerciseId' | 'setNumber' | 'weightKg' | 'reps' | 'completed'
->
+> & { id?: UUID }
 
 export type ExerciseSetChanges = Partial<
   Pick<ExerciseSet, 'setNumber' | 'weightKg' | 'reps' | 'completed'>
@@ -77,7 +79,7 @@ export async function addWorkoutExercise(
         1
       const now = createTimestamp()
       const workoutExercise: WorkoutExercise = {
-        id: createUUID(),
+        id: input.id ?? createUUID(),
         workoutId: workout.id,
         exerciseId: exercise.id,
         exerciseNameSnapshot: exercise.name,
@@ -233,7 +235,7 @@ export async function addExerciseSet(
       const now = createTimestamp()
       const set: ExerciseSet = {
         ...input,
-        id: createUUID(),
+        id: input.id ?? createUUID(),
         createdAt: now,
         updatedAt: now,
         deletedAt: null,

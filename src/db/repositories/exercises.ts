@@ -1,13 +1,14 @@
 import type { Exercise, ExerciseCategory } from '../../features/workouts/types'
 import { createTimestamp, createUUID } from '../../lib/dateTime'
 import { assertNonBlank } from '../../lib/validation'
+import type { UUID } from '../../types/records'
 import { db } from '../database'
 import type { GymTrackerDatabase } from '../database'
 
 export type CreateExerciseInput = Pick<
   Exercise,
   'name' | 'category' | 'equipment'
->
+> & { id?: UUID }
 export type ExerciseChanges = Partial<CreateExerciseInput>
 
 const categories: ExerciseCategory[] = [
@@ -56,7 +57,7 @@ export async function createExercise(
     const exercise: Exercise = {
       ...input,
       name: trimmedName,
-      id: createUUID(),
+      id: input.id ?? createUUID(),
       createdAt: now,
       updatedAt: now,
       deletedAt: null,

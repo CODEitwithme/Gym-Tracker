@@ -16,7 +16,7 @@ export type NavigationItem = {
 export const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { label: 'Workouts', icon: Dumbbell, href: '/workouts' },
-  { label: 'Nutrition', icon: Apple, href: '/nutrition' },
   { label: 'Progress', icon: TrendingUp, href: '/progress' },
+  { label: 'Nutrition', icon: Apple, href: '/nutrition' },
   { label: 'Settings', icon: Settings, href: '/settings/data' },
 ]

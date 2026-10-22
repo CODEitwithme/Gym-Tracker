@@ -1,6 +1,6 @@
 # Gym Tracker
 
-Gym Tracker is a local-first fitness tracker for recording workouts, exercise
+Forge/Fit is a local-first fitness tracker for recording workouts, exercise
 sets, saved meals, daily nutrition, and progress over time. It is built with
 React, TypeScript, Vite, Redux Toolkit, React Router, Tailwind CSS, and Dexie.
 It does not require an account or a backend.
@@ -71,9 +71,10 @@ application.
 
 ## Vercel deployment and client-side routes
 
-The app uses React Router browser-history routes, including `/progress`,
-`/workouts`, `/workouts/active`, `/workouts/:workoutId`, `/nutrition`,
-`/nutrition/meals`, and `/settings/data`. The root-level `vercel.json` sends
+The app uses React Router browser-history routes, including `/`,
+`/progress`, `/workouts`, `/workouts/active`, `/workouts/:workoutId`,
+`/nutrition`, `/nutrition/meals`, and `/settings/data`.
+The root-level `vercel.json` sends
 extension-free requests to `index.html`, which allows these routes (and unknown
 routes handled by the app) to load directly or after refresh. Paths containing
 a dot are not rewritten, so static asset requests are not sent back as HTML.

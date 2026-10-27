@@ -8,6 +8,7 @@ import {
   Edit2,
   Plus,
   RotateCcw,
+  Sparkles,
   Target,
   Trash2,
   Utensils,
@@ -190,6 +191,11 @@ function NutritionPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link to="/ai-logger?mode=nutrition">
+            <Button variant="outline" icon={Sparkles}>
+              Log with AI
+            </Button>
+          </Link>
           <Link to="/nutrition/meals">
             <Button variant="outline" icon={Utensils}>
               Saved meals

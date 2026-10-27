@@ -3,13 +3,15 @@ import {
   deleteAiCredentials,
   getAiCredentials,
   getDeviceToken,
+  parseMealMessage,
   parseWorkoutMessage,
   saveAiCredentials,
+  saveAiMeal,
   saveAiWorkout,
   testAiConnection,
 } from './aiLoggerService'
 import { db } from '../../db/database'
-import type { ConfirmedWorkout } from './types'
+import type { ConfirmedMeal, ConfirmedWorkout } from './types'
 
 describe('aiLoggerService', () => {
   let localStorageMock: Record<string, string>
@@ -40,6 +42,8 @@ describe('aiLoggerService', () => {
     await db.workoutExercises.clear()
     await db.exerciseSets.clear()
     await db.aiWorkoutLogs.clear()
+    await db.savedMeals.clear()
+    await db.mealLogs.clear()
   })
 
   // Test 1: getDeviceToken returns a UUID and reuses it across calls
@@ -308,5 +312,78 @@ describe('aiLoggerService', () => {
       .filter((s) => s.deletedAt === null)
       .first()
     expect(activeSession).toBeUndefined()
+  })
+
+  // Test 11: parseMealMessage sends POST to /api/ai/parse-meal and returns parsed meal
+  it('11. parseMealMessage sends POST to /api/ai/parse-meal and returns parsed meal', async () => {
+    const mockMeal = {
+      mealName: 'Oatmeal with Blueberries',
+      mealType: 'breakfast' as const,
+      servingDescription: '1 bowl',
+      calories: 320,
+      proteinG: 12,
+      carbsG: 55,
+      fatG: 6,
+      notes: null,
+      confidence: 'high' as const,
+      followUpQuestion: null,
+    }
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: mockMeal,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+
+    const result = await parseMealMessage('Oatmeal with blueberries for breakfast')
+    expect(result).toEqual(mockMeal)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(url).toContain('/api/ai/parse-meal')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(options.body)).toEqual({
+      message: 'Oatmeal with blueberries for breakfast',
+    })
+  })
+
+  // Test 12: saveAiMeal creates saved meal and logs it to IndexedDB
+  it('12. saveAiMeal creates saved meal and logs it to IndexedDB', async () => {
+    const confirmed: ConfirmedMeal = {
+      mealName: 'Salmon and Brown Rice',
+      mealType: 'dinner',
+      servingDescription: '1 plate (approx 350g)',
+      calories: 620,
+      proteinG: 45,
+      carbsG: 50,
+      fatG: 22,
+      portionPercent: 100,
+      notes: 'High protein dinner',
+    }
+
+    const mealLog = await saveAiMeal(confirmed)
+    expect(mealLog).toBeDefined()
+    expect(mealLog.mealType).toBe('dinner')
+    expect(mealLog.mealNameSnapshot).toBe('Salmon and Brown Rice')
+    expect(mealLog.nutritionSnapshot.calories).toBe(620)
+    expect(mealLog.nutritionSnapshot.proteinG).toBe(45)
+    expect(mealLog.nutritionSnapshot.carbsG).toBe(50)
+    expect(mealLog.nutritionSnapshot.fatG).toBe(22)
+
+    // Verify it was stored in IndexedDB
+    const savedMeals = await db.savedMeals.toArray()
+    expect(savedMeals.length).toBe(1)
+    expect(savedMeals[0].name).toBe('Salmon and Brown Rice')
+    expect(savedMeals[0].calories).toBe(620)
+
+    const mealLogs = await db.mealLogs.toArray()
+    expect(mealLogs.length).toBe(1)
+    expect(mealLogs[0].id).toBe(mealLog.id)
   })
 })

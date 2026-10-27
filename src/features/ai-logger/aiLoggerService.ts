@@ -11,7 +11,9 @@ import {
   startWorkout,
 } from '../workouts/workoutService'
 import type { WorkoutSession } from '../workouts/types'
-import type { AiProvider, ConfirmedWorkout, ParsedWorkout } from './types'
+import { createMeal, fetchSavedMeals, logMeal } from '../nutrition/nutritionService'
+import type { MealLog } from '../nutrition/types'
+import type { AiProvider, ConfirmedMeal, ConfirmedWorkout, ParsedMeal, ParsedWorkout } from './types'
 
 const WORKER_URL =
   (import.meta.env.VITE_WORKER_URL as string | undefined)?.replace(/\/+$/, '') ??
@@ -111,6 +113,47 @@ export async function parseWorkoutMessage(
   return requestJson<ParsedWorkout>('/api/ai/parse-workout', {
     method: 'POST',
     body: JSON.stringify({ message }),
+  })
+}
+
+export async function parseMealMessage(
+  message: string,
+): Promise<ParsedMeal> {
+  return requestJson<ParsedMeal>('/api/ai/parse-meal', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  })
+}
+
+export async function saveAiMeal(
+  confirmed: ConfirmedMeal,
+): Promise<MealLog> {
+  const existing = await fetchSavedMeals(confirmed.mealName)
+  let savedMeal = existing.find(
+    (m) => m.name.toLowerCase() === confirmed.mealName.toLowerCase().trim(),
+  )
+
+  if (!savedMeal) {
+    savedMeal = await createMeal({
+      name: confirmed.mealName.trim(),
+      servingDescription: confirmed.servingDescription.trim() || '1 serving',
+      calorieSource: 'manual',
+      calories: Math.max(0, Math.round(confirmed.calories)),
+      proteinG: Math.max(0, confirmed.proteinG),
+      carbsG: Math.max(0, confirmed.carbsG),
+      fatG: Math.max(0, confirmed.fatG),
+    })
+  }
+
+  const consumedAt = confirmed.consumedAt || new Date().toISOString()
+  const portionPercent =
+    confirmed.portionPercent > 0 ? confirmed.portionPercent : 100
+
+  return logMeal({
+    savedMealId: savedMeal.id,
+    consumedAt,
+    mealType: confirmed.mealType,
+    portionPercent,
   })
 }
 

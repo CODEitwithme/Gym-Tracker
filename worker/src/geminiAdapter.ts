@@ -130,6 +130,82 @@ export function validateParsedWorkout(raw: unknown): ParsedWorkout {
   }
 }
 
+export function validateParsedMeal(raw: unknown): ParsedMeal {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw new Error('Parsed meal must be an object')
+  }
+
+  const r = raw as Record<string, unknown>
+
+  if (typeof r.mealName !== 'string' || r.mealName.trim().length === 0) {
+    throw new Error('mealName must be a non-empty string')
+  }
+
+  const validMealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
+  let mealType: MealType = 'snack'
+  if (typeof r.mealType === 'string' && validMealTypes.includes(r.mealType.toLowerCase() as MealType)) {
+    mealType = r.mealType.toLowerCase() as MealType
+  }
+
+  const servingDescription =
+    typeof r.servingDescription === 'string' && r.servingDescription.trim().length > 0
+      ? r.servingDescription.trim()
+      : '1 serving'
+
+  if (r.confidence !== 'high' && r.confidence !== 'low') {
+    throw new Error('confidence must be "high" or "low"')
+  }
+
+  const calories =
+    typeof r.calories === 'number' && !isNaN(r.calories) && r.calories >= 0
+      ? Math.round(r.calories)
+      : 0
+
+  const proteinG =
+    typeof r.proteinG === 'number' && !isNaN(r.proteinG) && r.proteinG >= 0
+      ? Math.round(r.proteinG * 10) / 10
+      : 0
+
+  const carbsG =
+    typeof r.carbsG === 'number' && !isNaN(r.carbsG) && r.carbsG >= 0
+      ? Math.round(r.carbsG * 10) / 10
+      : 0
+
+  const fatG =
+    typeof r.fatG === 'number' && !isNaN(r.fatG) && r.fatG >= 0
+      ? Math.round(r.fatG * 10) / 10
+      : 0
+
+  let notes: string | null = null
+  if (r.notes !== null && r.notes !== undefined) {
+    if (typeof r.notes !== 'string') {
+      throw new Error('notes must be a string or null')
+    }
+    notes = r.notes
+  }
+
+  let followUpQuestion: string | null = null
+  if (r.followUpQuestion !== null && r.followUpQuestion !== undefined) {
+    if (typeof r.followUpQuestion !== 'string') {
+      throw new Error('followUpQuestion must be a string or null')
+    }
+    followUpQuestion = r.followUpQuestion
+  }
+
+  return {
+    mealName: r.mealName.trim(),
+    mealType,
+    servingDescription,
+    calories,
+    proteinG,
+    carbsG,
+    fatG,
+    notes,
+    confidence: r.confidence,
+    followUpQuestion,
+  }
+}
+
 async function findAvailableModel(apiKey: string): Promise<{ apiVersion: 'v1' | 'v1beta'; modelName: string } | null> {
   for (const apiVersion of ['v1beta', 'v1'] as const) {
     try {
@@ -179,7 +255,12 @@ async function findAvailableModel(apiKey: string): Promise<{ apiVersion: 'v1' | 
   return null
 }
 
-export async function callGemini(apiKey: string, prompt: string, model?: string): Promise<ParsedWorkout> {
+export async function callGeminiRaw(
+  apiKey: string,
+  prompt: string,
+  systemPrompt: string,
+  model?: string
+): Promise<unknown> {
   const tryModel = async (apiVersion: string, targetModel: string, useSystemInstruction = true): Promise<Response> => {
     const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${encodeURIComponent(targetModel)}:generateContent?key=${encodeURIComponent(apiKey)}`
     
@@ -190,7 +271,7 @@ export async function callGemini(apiKey: string, prompt: string, model?: string)
             {
               text: useSystemInstruction
                 ? prompt
-                : `${GEMINI_SYSTEM_PROMPT}\n\nExtract workout details from this message:\n${prompt}`,
+                : `${systemPrompt}\n\nUser message:\n${prompt}`,
             },
           ],
         },
@@ -202,7 +283,7 @@ export async function callGemini(apiKey: string, prompt: string, model?: string)
 
     if (useSystemInstruction) {
       body.systemInstruction = {
-        parts: [{ text: GEMINI_SYSTEM_PROMPT }],
+        parts: [{ text: systemPrompt }],
       }
     }
 
@@ -363,15 +444,27 @@ export async function callGemini(apiKey: string, prompt: string, model?: string)
     throw new GeminiApiError('Gemini returned an empty response', 'PROVIDER_ERROR', 502)
   }
 
-  let parsed: unknown
   try {
-    parsed = JSON.parse(rawText)
+    return JSON.parse(rawText)
   } catch {
     throw new GeminiApiError('Gemini response was not valid JSON', 'PROVIDER_ERROR', 502)
   }
+}
 
+export async function callGemini(apiKey: string, prompt: string, model?: string): Promise<ParsedWorkout> {
+  const raw = await callGeminiRaw(apiKey, prompt, GEMINI_SYSTEM_PROMPT, model)
   try {
-    return validateParsedWorkout(parsed)
+    return validateParsedWorkout(raw)
+  } catch (valErr: unknown) {
+    const message = valErr instanceof Error ? valErr.message : 'Schema validation failed'
+    throw new GeminiApiError(`AI response failed schema validation: ${message}`, 'PROVIDER_ERROR', 502)
+  }
+}
+
+export async function callGeminiMeal(apiKey: string, prompt: string, model?: string): Promise<ParsedMeal> {
+  const raw = await callGeminiRaw(apiKey, prompt, GEMINI_MEAL_SYSTEM_PROMPT, model)
+  try {
+    return validateParsedMeal(raw)
   } catch (valErr: unknown) {
     const message = valErr instanceof Error ? valErr.message : 'Schema validation failed'
     throw new GeminiApiError(`AI response failed schema validation: ${message}`, 'PROVIDER_ERROR', 502)

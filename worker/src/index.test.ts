@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import worker, { aiRateLimiter } from './index'
 import type { ApiError, Env, ParsedWorkout, StoredCredential } from './types'
 import { encrypt, decrypt } from './encryption'
-import { validateParsedWorkout } from './geminiAdapter'
+import { validateParsedWorkout, validateParsedMeal } from './geminiAdapter'
 
 const TEST_MASTER_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 const TEST_DEVICE_TOKEN = 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d'
@@ -667,5 +667,119 @@ describe('Forge/Fit Worker Backend', () => {
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe(TEST_ORIGIN)
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET')
     expect(response.headers.get('Access-Control-Allow-Headers')).toContain('X-Device-Token')
+  })
+
+  // Meal parsing tests
+  it('validateParsedMeal validates valid meal object', () => {
+    const raw = {
+      mealName: 'Chicken and Rice',
+      mealType: 'lunch',
+      servingDescription: '1 bowl',
+      calories: 550,
+      proteinG: 45,
+      carbsG: 60,
+      fatG: 12,
+      notes: 'Post workout',
+      confidence: 'high',
+      followUpQuestion: null,
+    }
+    const validated = validateParsedMeal(raw)
+    expect(validated.mealName).toBe('Chicken and Rice')
+    expect(validated.mealType).toBe('lunch')
+    expect(validated.calories).toBe(550)
+    expect(validated.proteinG).toBe(45)
+    expect(validated.carbsG).toBe(60)
+    expect(validated.fatG).toBe(12)
+    expect(validated.confidence).toBe('high')
+  })
+
+  it('validateParsedMeal defaults invalid meal type and handles missing serving description', () => {
+    const raw = {
+      mealName: 'Apple',
+      mealType: 'unknown_type',
+      calories: 95,
+      proteinG: 0.5,
+      carbsG: 25,
+      fatG: 0.3,
+      confidence: 'high',
+    }
+    const validated = validateParsedMeal(raw)
+    expect(validated.mealName).toBe('Apple')
+    expect(validated.mealType).toBe('snack')
+    expect(validated.servingDescription).toBe('1 serving')
+  })
+
+  it('POST /api/ai/parse-meal parses meal message when valid credentials exist', async () => {
+    const enc = await encrypt(TEST_MASTER_KEY, 'valid-gemini-key')
+    await env.CREDENTIAL_STORE.put(
+      `cred:${TEST_DEVICE_TOKEN}`,
+      JSON.stringify({
+        provider: 'gemini',
+        iv: enc.iv,
+        tag: enc.tag,
+        ciphertext: enc.ciphertext,
+      })
+    )
+
+    const mockAiResponse = {
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                text: JSON.stringify({
+                  mealName: 'Greek Yogurt with Berries',
+                  mealType: 'breakfast',
+                  servingDescription: '1 bowl (200g)',
+                  calories: 220,
+                  proteinG: 20,
+                  carbsG: 25,
+                  fatG: 4,
+                  notes: null,
+                  confidence: 'high',
+                  followUpQuestion: null,
+                }),
+              },
+            ],
+          },
+        },
+      ],
+    }
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(mockAiResponse), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const request = new Request('http://localhost/api/ai/parse-meal', {
+      method: 'POST',
+      headers: {
+        'X-Device-Token': TEST_DEVICE_TOKEN,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: 'I had greek yogurt with mixed berries for breakfast' }),
+    })
+
+    const response = await worker.fetch(request, env)
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toEqual({
+      ok: true,
+      data: {
+        mealName: 'Greek Yogurt with Berries',
+        mealType: 'breakfast',
+        servingDescription: '1 bowl (200g)',
+        calories: 220,
+        proteinG: 20,
+        carbsG: 25,
+        fatG: 4,
+        notes: null,
+        confidence: 'high',
+        followUpQuestion: null,
+      },
+    })
   })
 })

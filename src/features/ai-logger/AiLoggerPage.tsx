@@ -1,35 +1,53 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Bot, CheckCircle, Key, Send, Sparkles, WifiOff } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import {
+  Apple,
+  Bot,
+  CheckCircle,
+  Dumbbell,
+  Key,
+  Send,
+  Sparkles,
+  WifiOff,
+} from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
 import ParsedWorkoutPreview from './components/ParsedWorkoutPreview'
+import ParsedMealPreview from './components/ParsedMealPreview'
 import {
   getAiCredentials,
   isWorkerConfigured,
+  parseMealMessage,
   parseWorkoutMessage,
+  saveAiMeal,
   saveAiWorkout,
 } from './aiLoggerService'
 import {
   addUserMessage,
+  clearPendingMeal,
   clearPendingWorkout,
+  setLoggerMode,
   setParseError,
+  setParseMealResult,
   setParseResult,
   setSaveError,
   setSaveSuccess,
   startParsing,
   startSaving,
 } from './aiLoggerSlice'
-import type { ConfirmedWorkout } from './types'
+import type { ConfirmedMeal, ConfirmedWorkout } from './types'
 
 export function AiLoggerPage() {
   const dispatch = useAppDispatch()
+  const [searchParams] = useSearchParams()
   const {
+    mode,
     conversation,
     parsing,
     parseError,
     pendingWorkout,
+    pendingMeal,
     saving,
     saveError,
     savedMessage,
@@ -44,6 +62,16 @@ export function AiLoggerPage() {
   const [loadingCredentials, setLoadingCredentials] = useState(isConfigured)
   const [workerUnavailable, setWorkerUnavailable] = useState(!isConfigured)
   const conversationEndRef = useRef<HTMLDivElement>(null)
+
+  // Handle URL query ?mode=nutrition or ?mode=workout
+  useEffect(() => {
+    const urlMode = searchParams.get('mode')
+    if (urlMode === 'nutrition' || urlMode === 'food') {
+      dispatch(setLoggerMode('nutrition'))
+    } else if (urlMode === 'workout') {
+      dispatch(setLoggerMode('workout'))
+    }
+  }, [searchParams, dispatch])
 
   useEffect(() => {
     if (!isConfigured) return
@@ -77,7 +105,7 @@ export function AiLoggerPage() {
 
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [conversation, parsing, pendingWorkout])
+  }, [conversation, parsing, pendingWorkout, pendingMeal])
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -89,21 +117,29 @@ export function AiLoggerPage() {
     dispatch(startParsing())
 
     try {
-      const result = await parseWorkoutMessage(trimmed)
-      const assistantMessage = result.followUpQuestion
-        ? `I parsed your workout, but I have a question: ${result.followUpQuestion}`
-        : `I parsed: ${result.sets ? `${result.sets} sets of ` : ''}${result.exercise}${result.reps ? ` x ${result.reps} reps` : ''}${result.weight ? ` @ ${result.weight}${result.unit ?? 'kg'}` : ''}. Review and confirm below.`
-      dispatch(setParseResult({ result, assistantMessage }))
+      if (mode === 'nutrition') {
+        const result = await parseMealMessage(trimmed)
+        const assistantMessage = result.followUpQuestion
+          ? `I parsed your meal, but I have a question: ${result.followUpQuestion}`
+          : `I parsed: ${result.mealName} (${result.servingDescription}) — ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Review and confirm below.`
+        dispatch(setParseMealResult({ result, assistantMessage }))
+      } else {
+        const result = await parseWorkoutMessage(trimmed)
+        const assistantMessage = result.followUpQuestion
+          ? `I parsed your workout, but I have a question: ${result.followUpQuestion}`
+          : `I parsed: ${result.sets ? `${result.sets} sets of ` : ''}${result.exercise}${result.reps ? ` x ${result.reps} reps` : ''}${result.weight ? ` @ ${result.weight}${result.unit ?? 'kg'}` : ''}. Review and confirm below.`
+        dispatch(setParseResult({ result, assistantMessage }))
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error
           ? err.message
-          : 'Failed to parse workout with AI.'
+          : `Failed to parse ${mode === 'nutrition' ? 'meal' : 'workout'} with AI.`
       dispatch(setParseError(message))
     }
   }
 
-  const handleConfirm = async (confirmed: ConfirmedWorkout) => {
+  const handleConfirmWorkout = async (confirmed: ConfirmedWorkout) => {
     dispatch(startSaving())
     try {
       await saveAiWorkout(confirmed)
@@ -119,8 +155,20 @@ export function AiLoggerPage() {
     }
   }
 
-  const handleCancel = () => {
-    dispatch(clearPendingWorkout())
+  const handleConfirmMeal = async (confirmed: ConfirmedMeal) => {
+    dispatch(startSaving())
+    try {
+      await saveAiMeal(confirmed)
+      dispatch(
+        setSaveSuccess('Meal logged! View in your nutrition tracker.'),
+      )
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to log meal.'
+      dispatch(setSaveError(message))
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -141,11 +189,12 @@ export function AiLoggerPage() {
             <p className="text-sm font-medium text-accent">Smart Logger</p>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            AI Workout Logger
+            AI Workout &amp; Nutrition Logger
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Describe your workout in natural language. The AI parses exercises,
-            sets, reps, and weights directly into your training log.
+            Describe your workouts or meals in natural language. The AI parses
+            exercises, sets, weights, meals, and macronutrients directly into your
+            logs.
           </p>
         </div>
         <Link to="/settings/ai">
@@ -154,6 +203,34 @@ export function AiLoggerPage() {
           </Button>
         </Link>
       </header>
+
+      {/* Mode Selector Toggle */}
+      <div className="mb-6 flex items-center gap-2 rounded-xl border border-line bg-surface p-1.5 sm:w-fit">
+        <button
+          type="button"
+          onClick={() => dispatch(setLoggerMode('workout'))}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+            mode === 'workout'
+              ? 'bg-accent text-surface shadow-sm'
+              : 'text-muted hover:text-ink hover:bg-hover'
+          }`}
+        >
+          <Dumbbell aria-hidden="true" size={16} />
+          <span>Workouts</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => dispatch(setLoggerMode('nutrition'))}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+            mode === 'nutrition'
+              ? 'bg-accent text-surface shadow-sm'
+              : 'text-muted hover:text-ink hover:bg-hover'
+          }`}
+        >
+          <Apple aria-hidden="true" size={16} />
+          <span>Food &amp; Nutrition</span>
+        </button>
+      </div>
 
       {workerUnavailable && (
         <Card
@@ -197,7 +274,7 @@ export function AiLoggerPage() {
         !credentialStatus.hasKey && (
           <Card
             title="Setup Required"
-            description="Bring Your Own Key (BYOK) for private, zero-subscription AI workout logging."
+            description="Bring Your Own Key (BYOK) for private, zero-subscription AI logging."
             actions={<Badge variant="warning">No API Key</Badge>}
             className="mb-6"
           >
@@ -230,10 +307,12 @@ export function AiLoggerPage() {
             <span>{savedMessage}</span>
           </div>
           <Link
-            to="/workouts"
+            to={savedMessage.includes('Meal') ? '/nutrition' : '/workouts'}
             className="text-xs font-semibold text-accent hover:underline"
           >
-            View in workout history &rarr;
+            {savedMessage.includes('Meal')
+              ? 'View in nutrition tracker \u2192'
+              : 'View in workout history \u2192'}
           </Link>
         </div>
       )}
@@ -249,14 +328,22 @@ export function AiLoggerPage() {
 
       <div className="space-y-6">
         <Card
-          title="Conversation"
-          description="Log sets, ask questions, or describe an entire workout session."
+          title={mode === 'nutrition' ? 'Nutrition Conversation' : 'Workout Conversation'}
+          description={
+            mode === 'nutrition'
+              ? 'Describe breakfast, lunch, snacks, or meal macros.'
+              : 'Log sets, ask questions, or describe an entire workout session.'
+          }
         >
           {conversation.length === 0 ? (
             <EmptyState
               icon={Sparkles}
               title="No messages yet"
-              description="Type something like: '3 sets of 10 bench press at 80kg, felt smooth' or 'Did 4 sets of 8 pullups and 3 sets of 12 dips'."
+              description={
+                mode === 'nutrition'
+                  ? "Type something like: 'Bowl of oatmeal with 100g blueberries, a banana, and a scoop of whey protein' or '2 slices of sourdough with 3 eggs and half an avocado for breakfast'."
+                  : "Type something like: '3 sets of 10 bench press at 80kg, felt smooth' or 'Did 4 sets of 8 pullups and 3 sets of 12 dips'."
+              }
             />
           ) : (
             <div className="space-y-4 py-2">
@@ -308,7 +395,9 @@ export function AiLoggerPage() {
                         aria-hidden="true"
                         className="size-4 animate-spin text-accent"
                       />
-                      Parsing workout details…
+                      {mode === 'nutrition'
+                        ? 'Estimating nutrition & meal details…'
+                        : 'Parsing workout details…'}
                     </span>
                   </div>
                 </div>
@@ -323,8 +412,18 @@ export function AiLoggerPage() {
           <ParsedWorkoutPreview
             key={`${pendingWorkout.exercise}-${pendingWorkout.sets}-${pendingWorkout.reps}-${pendingWorkout.weight}`}
             workout={pendingWorkout}
-            onConfirm={handleConfirm}
-            onCancel={handleCancel}
+            onConfirm={handleConfirmWorkout}
+            onCancel={() => dispatch(clearPendingWorkout())}
+            saving={saving}
+          />
+        )}
+
+        {pendingMeal !== null && (
+          <ParsedMealPreview
+            key={`${pendingMeal.mealName}-${pendingMeal.calories}-${pendingMeal.proteinG}`}
+            meal={pendingMeal}
+            onConfirm={handleConfirmMeal}
+            onCancel={() => dispatch(clearPendingMeal())}
             saving={saving}
           />
         )}
@@ -333,20 +432,26 @@ export function AiLoggerPage() {
           <Card>
             <form onSubmit={handleSubmit} className="space-y-3">
               <label
-                htmlFor="workout-chat-input"
+                htmlFor="ai-chat-input"
                 className="block text-sm font-medium text-ink"
               >
-                Describe your workout
+                {mode === 'nutrition'
+                  ? 'Describe what you ate or drank'
+                  : 'Describe your workout'}
               </label>
               <textarea
-                id="workout-chat-input"
+                id="ai-chat-input"
                 rows={3}
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 maxLength={2000}
                 disabled={parsing || saving}
-                placeholder="e.g. Incline dumbbell press 4 sets of 8 reps with 30kg each side. Last set was tough."
+                placeholder={
+                  mode === 'nutrition'
+                    ? 'e.g. 200g grilled salmon with 1 cup cooked quinoa and steamed asparagus for dinner'
+                    : 'e.g. Incline dumbbell press 4 sets of 8 reps with 30kg each side. Last set was tough.'
+                }
                 className="w-full resize-y rounded-xl border border-line bg-surface p-3 text-sm text-ink placeholder:text-muted/60 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
               />
               <div className="flex flex-wrap items-center justify-between gap-2">

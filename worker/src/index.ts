@@ -10,6 +10,7 @@ import {
 import {
   handleTestConnection,
   handleParseWorkout,
+  handleParseMeal,
 } from './routes/ai'
 
 export const aiRateLimiter = new RateLimiter(10, 60 * 1000)
@@ -98,6 +99,24 @@ router.post('/api/ai/parse-workout', async (request: Request, env: Env) => {
     )
   }
   return handleParseWorkout(auth.deviceToken, body, env, aiRateLimiter)
+})
+
+router.post('/api/ai/parse-meal', async (request: Request, env: Env) => {
+  const auth = getDeviceToken(request)
+  if (auth instanceof Response) return auth
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return new Response(
+      JSON.stringify({ ok: false, error: 'Invalid JSON body', code: 'INVALID_BODY' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
+  }
+  return handleParseMeal(auth.deviceToken, body, env, aiRateLimiter)
 })
 
 const worker = {

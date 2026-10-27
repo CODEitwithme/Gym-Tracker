@@ -1,23 +1,27 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import { createTimestamp, createUUID } from '../../lib/dateTime'
-import type { AiConversationTurn, ParsedWorkout } from './types'
+import type { AiConversationTurn, AiLoggerMode, ParsedMeal, ParsedWorkout } from './types'
 
 export interface AiLoggerState {
+  mode: AiLoggerMode
   conversation: AiConversationTurn[]
   parsing: boolean
   parseError: string | null
   pendingWorkout: ParsedWorkout | null
+  pendingMeal: ParsedMeal | null
   saving: boolean
   saveError: string | null
   savedMessage: string | null
 }
 
 const initialState: AiLoggerState = {
+  mode: 'workout',
   conversation: [],
   parsing: false,
   parseError: null,
   pendingWorkout: null,
+  pendingMeal: null,
   saving: false,
   saveError: null,
   savedMessage: null,
@@ -27,6 +31,12 @@ export const aiLoggerSlice = createSlice({
   name: 'aiLogger',
   initialState,
   reducers: {
+    setLoggerMode: (state, action: PayloadAction<AiLoggerMode>) => {
+      state.mode = action.payload
+      state.parseError = null
+      state.saveError = null
+      state.savedMessage = null
+    },
     addUserMessage: {
       reducer: (state, action: PayloadAction<string>) => {
         state.parseError = null
@@ -56,6 +66,7 @@ export const aiLoggerSlice = createSlice({
         state.parsing = false
         state.parseError = null
         state.pendingWorkout = action.payload.result
+        state.pendingMeal = null
         state.conversation.push({
           id: createUUID(),
           role: 'assistant',
@@ -93,12 +104,64 @@ export const aiLoggerSlice = createSlice({
         }
       },
     },
+    setParseMealResult: {
+      reducer: (
+        state,
+        action: PayloadAction<{
+          result: ParsedMeal
+          assistantMessage: string
+        }>,
+      ) => {
+        state.parsing = false
+        state.parseError = null
+        state.pendingMeal = action.payload.result
+        state.pendingWorkout = null
+        state.conversation.push({
+          id: createUUID(),
+          role: 'assistant',
+          content: action.payload.assistantMessage,
+          parsedMeal: action.payload.result,
+          timestamp: createTimestamp(),
+        })
+      },
+      prepare: (
+        resultOrPayload:
+          | ParsedMeal
+          | { result: ParsedMeal; assistantMessage?: string },
+        maybeAssistantMessage?: string,
+      ) => {
+        let result: ParsedMeal
+        let assistantMessage: string | undefined
+        if ('result' in resultOrPayload) {
+          result = resultOrPayload.result
+          assistantMessage =
+            resultOrPayload.assistantMessage ?? maybeAssistantMessage
+        } else {
+          result = resultOrPayload
+          assistantMessage = maybeAssistantMessage
+        }
+
+        const defaultMsg = result.followUpQuestion
+          ? `I parsed your meal, but I have a question: ${result.followUpQuestion}`
+          : `I parsed: ${result.mealName} (${result.servingDescription}) — ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Please review and confirm below.`
+
+        return {
+          payload: {
+            result,
+            assistantMessage: assistantMessage ?? defaultMsg,
+          },
+        }
+      },
+    },
     setParseError: (state, action: PayloadAction<string>) => {
       state.parsing = false
       state.parseError = action.payload
     },
     clearPendingWorkout: (state) => {
       state.pendingWorkout = null
+    },
+    clearPendingMeal: (state) => {
+      state.pendingMeal = null
     },
     startSaving: (state) => {
       state.saving = true
@@ -109,6 +172,7 @@ export const aiLoggerSlice = createSlice({
       state.saveError = null
       state.savedMessage = action.payload
       state.pendingWorkout = null
+      state.pendingMeal = null
     },
     setSaveError: (state, action: PayloadAction<string>) => {
       state.saving = false
@@ -117,6 +181,7 @@ export const aiLoggerSlice = createSlice({
     clearConversation: (state) => {
       state.conversation = []
       state.pendingWorkout = null
+      state.pendingMeal = null
       state.parseError = null
       state.saveError = null
       state.savedMessage = null
@@ -125,11 +190,14 @@ export const aiLoggerSlice = createSlice({
 })
 
 export const {
+  setLoggerMode,
   addUserMessage,
   startParsing,
   setParseResult,
+  setParseMealResult,
   setParseError,
   clearPendingWorkout,
+  clearPendingMeal,
   startSaving,
   setSaveSuccess,
   setSaveError,

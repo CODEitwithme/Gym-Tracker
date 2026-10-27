@@ -1,0 +1,52 @@
+export interface Env {
+  CREDENTIAL_STORE: KVNamespace
+  MASTER_ENCRYPTION_KEY: string // hex-encoded 32-byte AES-256 key
+  ALLOWED_ORIGIN: string
+}
+
+export type AiProvider = 'gemini'
+
+export interface StoredCredential {
+  provider: AiProvider
+  iv: string // hex
+  tag: string // hex
+  ciphertext: string // hex
+}
+
+export interface ParsedWorkout {
+  exercise: string
+  weight: number | null
+  unit: 'kg' | 'lbs' | null
+  reps: number | null
+  sets: number | null
+  durationSeconds: number | null
+  notes: string | null
+  confidence: 'high' | 'low'
+  followUpQuestion: string | null
+}
+
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+export interface ParsedMeal {
+  mealName: string
+  mealType: MealType
+  servingDescription: string
+  calories: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+  notes: string | null
+  confidence: 'high' | 'low'
+  followUpQuestion: string | null
+}
+
+export interface ApiResponse<T> {
+  ok: true
+  data: T
+}
+
+export interface ApiError {
+  ok: false
+  error: string
+  code: string
+}

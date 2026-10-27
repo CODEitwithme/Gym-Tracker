@@ -126,7 +126,7 @@ describe('versioned JSON backup', () => {
 
     expect(parsed.format).toBe(BACKUP_FORMAT)
     expect(parsed.backupVersion).toBe(BACKUP_VERSION)
-    expect(parsed.schemaVersion).toBe(1)
+    expect(parsed.schemaVersion).toBe(2)
     expect(Object.keys(parsed.data).sort()).toEqual([...BACKUP_TABLES].sort())
     expect(parsed.data.workoutSessions[0]).toMatchObject({
       id: records.workout.id,

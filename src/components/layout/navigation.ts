@@ -1,9 +1,10 @@
 import {
   Apple,
+  Bot,
+  Dumbbell,
   LayoutDashboard,
   Settings,
   TrendingUp,
-  Dumbbell,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -18,5 +19,6 @@ export const navigationItems: NavigationItem[] = [
   { label: 'Workouts', icon: Dumbbell, href: '/workouts' },
   { label: 'Progress', icon: TrendingUp, href: '/progress' },
   { label: 'Nutrition', icon: Apple, href: '/nutrition' },
+  { label: 'AI Logger', icon: Bot, href: '/ai-logger' },
   { label: 'Settings', icon: Settings, href: '/settings/data' },
 ]

@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Dexie from 'dexie'
 import {
+  createAiWorkoutLog,
+  getAiWorkoutLog,
+  listAiWorkoutLogs,
+  softDeleteAiWorkoutLog,
+} from './aiWorkoutLogs'
+import {
   createExercise,
   listActiveExercises,
   softDeleteExercise,
@@ -576,5 +582,148 @@ describe('repositories', () => {
     )
     upgraded.close()
     await upgraded.delete()
+  })
+
+  it('creates, retrieves, lists, and soft-deletes AI workout logs', async () => {
+    const workout = await createWorkoutSession(
+      {
+        name: 'AI Tracked Workout',
+        startedAt: '2025-01-09T10:00:00.000Z',
+        completedAt: null,
+        status: 'in_progress',
+        notes: 'Created via AI Logger',
+      },
+      testDatabase,
+    )
+    const log = await createAiWorkoutLog(
+      {
+        workoutSessionId: workout.id,
+        originalMessage: 'did 3 sets of bench press 10 reps at 80kg',
+        provider: 'gemini',
+        parsedExercise: 'Bench Press',
+        confidence: 'high',
+      },
+      testDatabase,
+    )
+    expect(log.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    expect(log.workoutSessionId).toBe(workout.id)
+    expect(log.originalMessage).toBe('did 3 sets of bench press 10 reps at 80kg')
+    expect(log.provider).toBe('gemini')
+    expect(log.parsedExercise).toBe('Bench Press')
+    expect(log.confidence).toBe('high')
+    expect(log.deletedAt).toBeNull()
+    expect(log.createdAt).toBeDefined()
+    expect(log.updatedAt).toBeDefined()
+
+    const retrieved = await getAiWorkoutLog(workout.id, testDatabase)
+    expect(retrieved).toEqual(log)
+
+    const missing = await getAiWorkoutLog('unknown-session-id', testDatabase)
+    expect(missing).toBeUndefined()
+
+    const activeLogs = await listAiWorkoutLogs(testDatabase)
+    expect(activeLogs).toHaveLength(1)
+    expect(activeLogs[0].id).toBe(log.id)
+
+    const deleted = await softDeleteAiWorkoutLog(log.id, testDatabase)
+    expect(deleted.deletedAt).not.toBeNull()
+    expect(deleted.updatedAt).toBe(deleted.deletedAt)
+    expect(await getAiWorkoutLog(workout.id, testDatabase)).toBeUndefined()
+    expect(await listAiWorkoutLogs(testDatabase)).toHaveLength(0)
+  })
+
+  it('rejects invalid AI workout log inputs', async () => {
+    await expect(
+      createAiWorkoutLog(
+        {
+          workoutSessionId: '',
+          originalMessage: '3 sets bench press',
+          provider: 'gemini',
+          parsedExercise: 'Bench Press',
+          confidence: 'high',
+        },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Workout session ID/)
+
+    await expect(
+      createAiWorkoutLog(
+        {
+          workoutSessionId: createUUID(),
+          originalMessage: '   ',
+          provider: 'gemini',
+          parsedExercise: 'Bench Press',
+          confidence: 'high',
+        },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Original message/)
+
+    await expect(
+      createAiWorkoutLog(
+        {
+          workoutSessionId: createUUID(),
+          originalMessage: '3 sets bench press',
+          provider: 'gemini',
+          parsedExercise: '',
+          confidence: 'high',
+        },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Parsed exercise/)
+
+    await expect(
+      createAiWorkoutLog(
+        {
+          workoutSessionId: createUUID(),
+          originalMessage: '3 sets bench press',
+          provider: 'unsupported' as unknown as 'gemini',
+          parsedExercise: 'Bench Press',
+          confidence: 'high',
+        },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Provider must be gemini/)
+
+    await expect(
+      createAiWorkoutLog(
+        {
+          workoutSessionId: createUUID(),
+          originalMessage: '3 sets bench press',
+          provider: 'gemini',
+          parsedExercise: 'Bench Press',
+          confidence: 'medium' as unknown as 'high',
+        },
+        testDatabase,
+      ),
+    ).rejects.toThrow(/Confidence must be high or low/)
+  })
+
+  it('migrates from version 1 to version 2 schema and includes aiWorkoutLogs table', async () => {
+    const databaseName = `gym-tracker-v1-to-v2-${createUUID()}`
+    const dbV1 = new Dexie(databaseName)
+    applyMigrations(dbV1, [migrations[0]])
+    await dbV1.open()
+    expect(dbV1.tables.map((table) => table.name)).not.toContain('aiWorkoutLogs')
+    dbV1.close()
+
+    const dbV2 = new Dexie(databaseName)
+    applyMigrations(dbV2, migrations)
+    await dbV2.open()
+    expect(dbV2.tables.map((table) => table.name)).toEqual(
+      expect.arrayContaining([
+        'workoutSessions',
+        'exercises',
+        'workoutExercises',
+        'exerciseSets',
+        'savedMeals',
+        'mealLogs',
+        'aiWorkoutLogs',
+      ]),
+    )
+    dbV2.close()
+    await dbV2.delete()
   })
 })

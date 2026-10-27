@@ -15,6 +15,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Cloudflare Worker secrets
+worker/.dev.vars
+worker/.wrangler/
+worker/dist/
+worker/node_modules/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -26,3 +32,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*

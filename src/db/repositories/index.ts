@@ -1,3 +1,4 @@
+export * from './aiWorkoutLogs'
 export * from './exercises'
 export * from './nutrition'
 export * from './workoutDetails'

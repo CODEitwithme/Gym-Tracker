@@ -121,13 +121,17 @@ export function AiLoggerPage() {
         const result = await parseMealMessage(trimmed)
         const assistantMessage = result.followUpQuestion
           ? `I parsed your meal, but I have a question: ${result.followUpQuestion}`
-          : `I parsed: ${result.mealName} (${result.servingDescription}) — ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Review and confirm below.`
+          : result.meals && result.meals.length > 1
+            ? `I parsed ${result.meals.length} items (${result.meals.map((m) => `${m.mealName} [${m.mealType}]`).join(', ')}). Total: ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Review and confirm below.`
+            : `I parsed: ${result.mealName} (${result.servingDescription}) — ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Review and confirm below.`
         dispatch(setParseMealResult({ result, assistantMessage }))
       } else {
         const result = await parseWorkoutMessage(trimmed)
         const assistantMessage = result.followUpQuestion
           ? `I parsed your workout, but I have a question: ${result.followUpQuestion}`
-          : `I parsed: ${result.sets ? `${result.sets} sets of ` : ''}${result.exercise}${result.reps ? ` x ${result.reps} reps` : ''}${result.weight ? ` @ ${result.weight}${result.unit ?? 'kg'}` : ''}. Review and confirm below.`
+          : result.exercises && result.exercises.length > 1
+            ? `I parsed ${result.exercises.length} exercises (${result.exercises.map((e) => `${e.sets ? `${e.sets}x` : ''}${e.reps ? `${e.reps} ` : ''}${e.exercise}${e.weight ? ` @ ${e.weight}${e.unit ?? 'kg'}` : ''}`).join(', ')}). Review and confirm below.`
+            : `I parsed: ${result.sets ? `${result.sets} sets of ` : ''}${result.exercise}${result.reps ? ` x ${result.reps} reps` : ''}${result.weight ? ` @ ${result.weight}${result.unit ?? 'kg'}` : ''}. Review and confirm below.`
         dispatch(setParseResult({ result, assistantMessage }))
       }
     } catch (err: unknown) {
@@ -143,8 +147,11 @@ export function AiLoggerPage() {
     dispatch(startSaving())
     try {
       await saveAiWorkout(confirmed)
+      const count = confirmed.exercises?.length ?? 1
       dispatch(
-        setSaveSuccess('Workout saved! View in your workout history.'),
+        setSaveSuccess(
+          `Workout with ${count} ${count === 1 ? 'exercise' : 'exercises'} saved! View in your workout history.`,
+        ),
       )
     } catch (err: unknown) {
       const message =
@@ -159,8 +166,11 @@ export function AiLoggerPage() {
     dispatch(startSaving())
     try {
       await saveAiMeal(confirmed)
+      const count = confirmed.meals?.length ?? 1
       dispatch(
-        setSaveSuccess('Meal logged! View in your nutrition tracker.'),
+        setSaveSuccess(
+          `${count} ${count === 1 ? 'meal' : 'food items'} logged! View in your nutrition tracker.`,
+        ),
       )
     } catch (err: unknown) {
       const message =

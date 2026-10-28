@@ -92,9 +92,20 @@ export const aiLoggerSlice = createSlice({
           assistantMessage = maybeAssistantMessage
         }
 
-        const defaultMsg = result.followUpQuestion
-          ? `I parsed your workout, but I have a question: ${result.followUpQuestion}`
-          : `I parsed: ${result.sets ? `${result.sets} sets of ` : ''}${result.exercise}${result.reps ? ` x ${result.reps} reps` : ''}${result.weight ? ` @ ${result.weight}${result.unit ?? 'kg'}` : ''}. Please review and confirm below.`
+        let defaultMsg: string
+        if (result.followUpQuestion) {
+          defaultMsg = `I parsed your workout, but I have a question: ${result.followUpQuestion}`
+        } else if (result.exercises && result.exercises.length > 1) {
+          const list = result.exercises
+            .map(
+              (e) =>
+                `${e.sets ? `${e.sets}x` : ''}${e.reps ? `${e.reps} ` : ''}${e.exercise}${e.weight ? ` @ ${e.weight}${e.unit ?? 'kg'}` : ''}`,
+            )
+            .join(', ')
+          defaultMsg = `I parsed ${result.exercises.length} exercises (${list}). Please review and confirm below.`
+        } else {
+          defaultMsg = `I parsed: ${result.sets ? `${result.sets} sets of ` : ''}${result.exercise}${result.reps ? ` x ${result.reps} reps` : ''}${result.weight ? ` @ ${result.weight}${result.unit ?? 'kg'}` : ''}. Please review and confirm below.`
+        }
 
         return {
           payload: {
@@ -141,9 +152,17 @@ export const aiLoggerSlice = createSlice({
           assistantMessage = maybeAssistantMessage
         }
 
-        const defaultMsg = result.followUpQuestion
-          ? `I parsed your meal, but I have a question: ${result.followUpQuestion}`
-          : `I parsed: ${result.mealName} (${result.servingDescription}) — ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Please review and confirm below.`
+        let defaultMsg: string
+        if (result.followUpQuestion) {
+          defaultMsg = `I parsed your meal, but I have a question: ${result.followUpQuestion}`
+        } else if (result.meals && result.meals.length > 1) {
+          const names = result.meals
+            .map((m) => `${m.mealName} [${m.mealType}]`)
+            .join(', ')
+          defaultMsg = `I parsed ${result.meals.length} items (${names}) — ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Please review and confirm below.`
+        } else {
+          defaultMsg = `I parsed: ${result.mealName} (${result.servingDescription}) — ~${result.calories} kcal (${result.proteinG}g P, ${result.carbsG}g C, ${result.fatG}g F). Please review and confirm below.`
+        }
 
         return {
           payload: {

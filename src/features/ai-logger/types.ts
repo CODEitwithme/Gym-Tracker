@@ -7,7 +7,18 @@ export type AiProvider = 'gemini'
 
 export type AiLoggerMode = 'workout' | 'nutrition'
 
+export interface ParsedExerciseItem {
+  exercise: string
+  weight: number | null
+  unit: 'kg' | 'lbs' | null
+  reps: number | null
+  sets: number | null
+  durationSeconds: number | null
+  notes: string | null
+}
+
 export interface ParsedWorkout {
+  exercises: ParsedExerciseItem[]
   exercise: string
   weight: number | null
   unit: 'kg' | 'lbs' | null
@@ -19,7 +30,19 @@ export interface ParsedWorkout {
   followUpQuestion: string | null
 }
 
+export interface ParsedMealItem {
+  mealName: string
+  mealType: MealType
+  servingDescription: string
+  calories: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+  notes: string | null
+}
+
 export interface ParsedMeal {
+  meals: ParsedMealItem[]
   mealName: string
   mealType: MealType
   servingDescription: string
@@ -41,7 +64,7 @@ export interface AiConversationTurn {
   timestamp: string
 }
 
-export interface ConfirmedWorkout {
+export interface ConfirmedExerciseItem {
   exercise: string
   weight: number | null
   unit: 'kg' | 'lbs'
@@ -51,7 +74,20 @@ export interface ConfirmedWorkout {
   notes: string
 }
 
-export interface ConfirmedMeal {
+export interface ConfirmedWorkout {
+  exercises?: ConfirmedExerciseItem[]
+  sessionName?: string
+  notes?: string
+  // Legacy / single exercise compatibility fields
+  exercise?: string
+  weight?: number | null
+  unit?: 'kg' | 'lbs'
+  reps?: number
+  sets?: number
+  durationSeconds?: number | null
+}
+
+export interface ConfirmedMealItem {
   mealName: string
   mealType: MealType
   servingDescription: string
@@ -60,6 +96,21 @@ export interface ConfirmedMeal {
   carbsG: number
   fatG: number
   portionPercent: number
+  consumedAt?: string
+  notes?: string
+}
+
+export interface ConfirmedMeal {
+  meals?: ConfirmedMealItem[]
+  // Legacy / single meal compatibility fields
+  mealName?: string
+  mealType?: MealType
+  servingDescription?: string
+  calories?: number
+  proteinG?: number
+  carbsG?: number
+  fatG?: number
+  portionPercent?: number
   consumedAt?: string
   notes?: string
 }

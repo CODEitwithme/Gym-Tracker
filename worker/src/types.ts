@@ -13,7 +13,18 @@ export interface StoredCredential {
   ciphertext: string // hex
 }
 
+export interface ParsedExerciseItem {
+  exercise: string
+  weight: number | null
+  unit: 'kg' | 'lbs' | null
+  reps: number | null
+  sets: number | null
+  durationSeconds: number | null
+  notes: string | null
+}
+
 export interface ParsedWorkout {
+  exercises: ParsedExerciseItem[]
   exercise: string
   weight: number | null
   unit: 'kg' | 'lbs' | null
@@ -27,7 +38,19 @@ export interface ParsedWorkout {
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
+export interface ParsedMealItem {
+  mealName: string
+  mealType: MealType
+  servingDescription: string
+  calories: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+  notes: string | null
+}
+
 export interface ParsedMeal {
+  meals: ParsedMealItem[]
   mealName: string
   mealType: MealType
   servingDescription: string

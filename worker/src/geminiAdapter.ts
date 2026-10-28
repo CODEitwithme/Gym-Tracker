@@ -1,36 +1,61 @@
-import type { MealType, ParsedMeal, ParsedWorkout } from './types'
+import type { MealType, ParsedExerciseItem, ParsedMeal, ParsedMealItem, ParsedWorkout } from './types'
 
-export const GEMINI_SYSTEM_PROMPT = `You are a workout data extraction assistant. Extract workout data from the user's natural language message. Return ONLY valid JSON matching this schema (no markdown, no explanation):
+export const GEMINI_SYSTEM_PROMPT = `You are a workout data extraction assistant. Extract ALL exercises performed from the user's natural language message. A message may contain ONE or MULTIPLE exercises (e.g. "Bench press 80kg 3x8, Incline DB press 24kg 3x10").
+
+Return ONLY valid JSON matching this schema (no markdown, no explanation):
 {
-  "exercise": string (exercise name, title-cased) or null,
-  "weight": number or null,
-  "unit": "kg" or "lbs" or null,
-  "reps": positive integer or null,
-  "sets": positive integer or null,
-  "durationSeconds": positive integer or null,
-  "notes": string or null,
+  "exercises": [
+    {
+      "exercise": string (exercise name, title-cased),
+      "weight": number or null,
+      "unit": "kg" or "lbs" or null,
+      "reps": positive integer or null,
+      "sets": positive integer or null,
+      "durationSeconds": positive integer or null,
+      "notes": string or null
+    }
+  ],
   "confidence": "high" if you could extract all key details, "low" if guessing,
   "followUpQuestion": string asking for missing essential details, or null if not needed
 }
-Rules: treat ambiguous info as null. Do not invent numbers. Do not include any text outside the JSON.`
 
-export const GEMINI_MEAL_SYSTEM_PROMPT = `You are a nutrition and meal data extraction assistant. Extract food, meal, and macronutrient information from the user's natural language message. Estimate realistic nutritional values if exact numbers are not given. Return ONLY valid JSON matching this schema (no markdown, no explanation):
+Rules:
+1. Extract every distinct exercise mentioned. Do not omit any exercises.
+2. If only one exercise is mentioned, return an array with that single exercise in "exercises".
+3. Treat ambiguous info as null. Do not invent numbers.
+4. Do not include any text outside the JSON.`
+
+export const GEMINI_MEAL_SYSTEM_PROMPT = `You are a nutrition and meal data extraction assistant. Extract ALL food and meal items from the user's natural language message. A message may contain ONE or MULTIPLE food items under the SAME or DIFFERENT meal types (breakfast, lunch, dinner, snack).
+
+For example:
+- "Breakfast: 2 eggs and toast. Lunch: chicken and rice. Snack: protein shake." -> 3 items with their respective mealTypes.
+- "For lunch I had a chicken sandwich, french fries, and a diet coke." -> 3 items with mealType "lunch".
+
+Estimate realistic nutritional values (calories, protein, carbs, fat) for each item if exact numbers are not given.
+
+Return ONLY valid JSON matching this schema (no markdown, no explanation):
 {
-  "mealName": string (e.g. "Oatmeal with Blueberries and Honey", title-cased),
-  "mealType": "breakfast" | "lunch" | "dinner" | "snack",
-  "servingDescription": string (e.g. "1 bowl (approx 350g)" or "2 slices"),
-  "calories": non-negative integer (estimated total kcal),
-  "proteinG": non-negative number (grams of protein),
-  "carbsG": non-negative number (grams of carbohydrates),
-  "fatG": non-negative number (grams of fat),
-  "notes": string or null,
+  "meals": [
+    {
+      "mealName": string (e.g. "Scrambled Eggs with Toast", title-cased),
+      "mealType": "breakfast" | "lunch" | "dinner" | "snack",
+      "servingDescription": string (e.g. "2 eggs, 2 slices toast" or "200g"),
+      "calories": non-negative integer (estimated kcal for this item),
+      "proteinG": non-negative number (grams of protein),
+      "carbsG": non-negative number (grams of carbohydrates),
+      "fatG": non-negative number (grams of fat),
+      "notes": string or null
+    }
+  ],
   "confidence": "high" if confident in estimation or numbers, "low" if guessing,
   "followUpQuestion": string asking for missing details if highly ambiguous, or null if not needed
 }
+
 Rules:
-1. mealType must be exactly one of: "breakfast", "lunch", "dinner", "snack". Infer from meal items, context, or time of day, defaulting to "snack" if completely unspecified.
-2. calories, proteinG, carbsG, fatG must be realistic non-negative numbers.
-3. Do not invent unrealistic values. Do not include any text outside the JSON.`
+1. Extract each distinct food or meal item. Infer mealType ("breakfast", "lunch", "dinner", "snack") from the user's explicit mentions, food context, or time of day. Default to "snack" if completely unspecified.
+2. calories, proteinG, carbsG, fatG must be realistic non-negative numbers for each item.
+3. If only one food/meal is mentioned, return an array with that single item in "meals".
+4. Do not invent unrealistic values. Do not include any text outside the JSON.`
 
 export type GeminiErrorCode = 'INVALID_KEY' | 'QUOTA_EXCEEDED' | 'PROVIDER_ERROR'
 
@@ -46,6 +71,76 @@ export class GeminiApiError extends Error {
   }
 }
 
+function validateExerciseItem(r: unknown): ParsedExerciseItem {
+  if (typeof r !== 'object' || r === null || Array.isArray(r)) {
+    throw new Error('exercise item must be an object')
+  }
+
+  const item = r as Record<string, unknown>
+
+  if (typeof item.exercise !== 'string' || item.exercise.trim().length === 0) {
+    throw new Error('exercise must be a non-empty string')
+  }
+
+  let weight: number | null = null
+  if (item.weight !== null && item.weight !== undefined) {
+    if (typeof item.weight !== 'number' || isNaN(item.weight) || item.weight < 0) {
+      throw new Error('weight must be a non-negative number or null')
+    }
+    weight = item.weight
+  }
+
+  let unit: 'kg' | 'lbs' | null = null
+  if (item.unit !== null && item.unit !== undefined) {
+    if (item.unit !== 'kg' && item.unit !== 'lbs') {
+      throw new Error('unit must be "kg", "lbs", or null')
+    }
+    unit = item.unit
+  }
+
+  let reps: number | null = null
+  if (item.reps !== null && item.reps !== undefined) {
+    if (typeof item.reps !== 'number' || !Number.isInteger(item.reps) || item.reps <= 0) {
+      throw new Error('reps must be a positive integer or null')
+    }
+    reps = item.reps
+  }
+
+  let sets: number | null = null
+  if (item.sets !== null && item.sets !== undefined) {
+    if (typeof item.sets !== 'number' || !Number.isInteger(item.sets) || item.sets <= 0) {
+      throw new Error('sets must be a positive integer or null')
+    }
+    sets = item.sets
+  }
+
+  let durationSeconds: number | null = null
+  if (item.durationSeconds !== null && item.durationSeconds !== undefined) {
+    if (typeof item.durationSeconds !== 'number' || !Number.isInteger(item.durationSeconds) || item.durationSeconds <= 0) {
+      throw new Error('durationSeconds must be a positive integer or null')
+    }
+    durationSeconds = item.durationSeconds
+  }
+
+  let notes: string | null = null
+  if (item.notes !== null && item.notes !== undefined) {
+    if (typeof item.notes !== 'string') {
+      throw new Error('notes must be a string or null')
+    }
+    notes = item.notes
+  }
+
+  return {
+    exercise: item.exercise.trim(),
+    weight,
+    unit,
+    reps,
+    sets,
+    durationSeconds,
+    notes,
+  }
+}
+
 export function validateParsedWorkout(raw: unknown): ParsedWorkout {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new Error('Parsed workout must be an object')
@@ -53,60 +148,22 @@ export function validateParsedWorkout(raw: unknown): ParsedWorkout {
 
   const r = raw as Record<string, unknown>
 
-  if (typeof r.exercise !== 'string' || r.exercise.trim().length === 0) {
-    throw new Error('exercise must be a non-empty string')
-  }
-
   if (r.confidence !== 'high' && r.confidence !== 'low') {
     throw new Error('confidence must be "high" or "low"')
   }
 
-  let weight: number | null = null
-  if (r.weight !== null && r.weight !== undefined) {
-    if (typeof r.weight !== 'number' || isNaN(r.weight) || r.weight < 0) {
-      throw new Error('weight must be a non-negative number or null')
-    }
-    weight = r.weight
-  }
+  let exercises: ParsedExerciseItem[] = []
 
-  let unit: 'kg' | 'lbs' | null = null
-  if (r.unit !== null && r.unit !== undefined) {
-    if (r.unit !== 'kg' && r.unit !== 'lbs') {
-      throw new Error('unit must be "kg", "lbs", or null')
+  if (Array.isArray(r.exercises)) {
+    if (r.exercises.length === 0) {
+      throw new Error('exercise must be a non-empty string')
     }
-    unit = r.unit
-  }
-
-  let reps: number | null = null
-  if (r.reps !== null && r.reps !== undefined) {
-    if (typeof r.reps !== 'number' || !Number.isInteger(r.reps) || r.reps <= 0) {
-      throw new Error('reps must be a positive integer or null')
-    }
-    reps = r.reps
-  }
-
-  let sets: number | null = null
-  if (r.sets !== null && r.sets !== undefined) {
-    if (typeof r.sets !== 'number' || !Number.isInteger(r.sets) || r.sets <= 0) {
-      throw new Error('sets must be a positive integer or null')
-    }
-    sets = r.sets
-  }
-
-  let durationSeconds: number | null = null
-  if (r.durationSeconds !== null && r.durationSeconds !== undefined) {
-    if (typeof r.durationSeconds !== 'number' || !Number.isInteger(r.durationSeconds) || r.durationSeconds <= 0) {
-      throw new Error('durationSeconds must be a positive integer or null')
-    }
-    durationSeconds = r.durationSeconds
-  }
-
-  let notes: string | null = null
-  if (r.notes !== null && r.notes !== undefined) {
-    if (typeof r.notes !== 'string') {
-      throw new Error('notes must be a string or null')
-    }
-    notes = r.notes
+    exercises = r.exercises.map(validateExerciseItem)
+  } else if (r.exercise !== undefined) {
+    const single = validateExerciseItem(r)
+    exercises = [single]
+  } else {
+    throw new Error('exercise must be a non-empty string')
   }
 
   let followUpQuestion: string | null = null
@@ -117,16 +174,81 @@ export function validateParsedWorkout(raw: unknown): ParsedWorkout {
     followUpQuestion = r.followUpQuestion
   }
 
+  const primary = exercises[0]
+
   return {
-    exercise: r.exercise.trim(),
-    weight,
-    unit,
-    reps,
-    sets,
-    durationSeconds,
-    notes,
+    exercises,
+    exercise: primary.exercise,
+    weight: primary.weight,
+    unit: primary.unit,
+    reps: primary.reps,
+    sets: primary.sets,
+    durationSeconds: primary.durationSeconds,
+    notes: primary.notes,
     confidence: r.confidence,
     followUpQuestion,
+  }
+}
+
+function validateMealItem(r: unknown): ParsedMealItem {
+  if (typeof r !== 'object' || r === null || Array.isArray(r)) {
+    throw new Error('meal item must be an object')
+  }
+
+  const item = r as Record<string, unknown>
+
+  if (typeof item.mealName !== 'string' || item.mealName.trim().length === 0) {
+    throw new Error('mealName must be a non-empty string')
+  }
+
+  const validMealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
+  let mealType: MealType = 'snack'
+  if (typeof item.mealType === 'string' && validMealTypes.includes(item.mealType.toLowerCase() as MealType)) {
+    mealType = item.mealType.toLowerCase() as MealType
+  }
+
+  const servingDescription =
+    typeof item.servingDescription === 'string' && item.servingDescription.trim().length > 0
+      ? item.servingDescription.trim()
+      : '1 serving'
+
+  const calories =
+    typeof item.calories === 'number' && !isNaN(item.calories) && item.calories >= 0
+      ? Math.round(item.calories)
+      : 0
+
+  const proteinG =
+    typeof item.proteinG === 'number' && !isNaN(item.proteinG) && item.proteinG >= 0
+      ? Math.round(item.proteinG * 10) / 10
+      : 0
+
+  const carbsG =
+    typeof item.carbsG === 'number' && !isNaN(item.carbsG) && item.carbsG >= 0
+      ? Math.round(item.carbsG * 10) / 10
+      : 0
+
+  const fatG =
+    typeof item.fatG === 'number' && !isNaN(item.fatG) && item.fatG >= 0
+      ? Math.round(item.fatG * 10) / 10
+      : 0
+
+  let notes: string | null = null
+  if (item.notes !== null && item.notes !== undefined) {
+    if (typeof item.notes !== 'string') {
+      throw new Error('notes must be a string or null')
+    }
+    notes = item.notes
+  }
+
+  return {
+    mealName: item.mealName.trim(),
+    mealType,
+    servingDescription,
+    calories,
+    proteinG,
+    carbsG,
+    fatG,
+    notes,
   }
 }
 
@@ -137,51 +259,22 @@ export function validateParsedMeal(raw: unknown): ParsedMeal {
 
   const r = raw as Record<string, unknown>
 
-  if (typeof r.mealName !== 'string' || r.mealName.trim().length === 0) {
-    throw new Error('mealName must be a non-empty string')
-  }
-
-  const validMealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
-  let mealType: MealType = 'snack'
-  if (typeof r.mealType === 'string' && validMealTypes.includes(r.mealType.toLowerCase() as MealType)) {
-    mealType = r.mealType.toLowerCase() as MealType
-  }
-
-  const servingDescription =
-    typeof r.servingDescription === 'string' && r.servingDescription.trim().length > 0
-      ? r.servingDescription.trim()
-      : '1 serving'
-
   if (r.confidence !== 'high' && r.confidence !== 'low') {
     throw new Error('confidence must be "high" or "low"')
   }
 
-  const calories =
-    typeof r.calories === 'number' && !isNaN(r.calories) && r.calories >= 0
-      ? Math.round(r.calories)
-      : 0
+  let meals: ParsedMealItem[] = []
 
-  const proteinG =
-    typeof r.proteinG === 'number' && !isNaN(r.proteinG) && r.proteinG >= 0
-      ? Math.round(r.proteinG * 10) / 10
-      : 0
-
-  const carbsG =
-    typeof r.carbsG === 'number' && !isNaN(r.carbsG) && r.carbsG >= 0
-      ? Math.round(r.carbsG * 10) / 10
-      : 0
-
-  const fatG =
-    typeof r.fatG === 'number' && !isNaN(r.fatG) && r.fatG >= 0
-      ? Math.round(r.fatG * 10) / 10
-      : 0
-
-  let notes: string | null = null
-  if (r.notes !== null && r.notes !== undefined) {
-    if (typeof r.notes !== 'string') {
-      throw new Error('notes must be a string or null')
+  if (Array.isArray(r.meals)) {
+    if (r.meals.length === 0) {
+      throw new Error('mealName must be a non-empty string')
     }
-    notes = r.notes
+    meals = r.meals.map(validateMealItem)
+  } else if (r.mealName !== undefined) {
+    const single = validateMealItem(r)
+    meals = [single]
+  } else {
+    throw new Error('mealName must be a non-empty string')
   }
 
   let followUpQuestion: string | null = null
@@ -192,15 +285,22 @@ export function validateParsedMeal(raw: unknown): ParsedMeal {
     followUpQuestion = r.followUpQuestion
   }
 
+  const primary = meals[0]
+  const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0)
+  const totalProteinG = Math.round(meals.reduce((sum, m) => sum + m.proteinG, 0) * 10) / 10
+  const totalCarbsG = Math.round(meals.reduce((sum, m) => sum + m.carbsG, 0) * 10) / 10
+  const totalFatG = Math.round(meals.reduce((sum, m) => sum + m.fatG, 0) * 10) / 10
+
   return {
-    mealName: r.mealName.trim(),
-    mealType,
-    servingDescription,
-    calories,
-    proteinG,
-    carbsG,
-    fatG,
-    notes,
+    meals,
+    mealName: meals.length === 1 ? primary.mealName : `${meals.length} items logged`,
+    mealType: primary.mealType,
+    servingDescription: primary.servingDescription,
+    calories: totalCalories,
+    proteinG: totalProteinG,
+    carbsG: totalCarbsG,
+    fatG: totalFatG,
+    notes: primary.notes,
     confidence: r.confidence,
     followUpQuestion,
   }

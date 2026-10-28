@@ -386,4 +386,109 @@ describe('aiLoggerService', () => {
     expect(mealLogs.length).toBe(1)
     expect(mealLogs[0].id).toBe(mealLog.id)
   })
+
+  // Test 13: saveAiWorkout handles multiple exercises in one workout session
+  it('13. saveAiWorkout handles multiple exercises in one workout session', async () => {
+    const workoutData: ConfirmedWorkout = {
+      exercises: [
+        {
+          exercise: 'Bench Press',
+          weight: 80,
+          unit: 'kg',
+          reps: 8,
+          sets: 3,
+          durationSeconds: null,
+          notes: 'Set 1-3 felt solid',
+        },
+        {
+          exercise: 'Incline DB Press',
+          weight: 24,
+          unit: 'kg',
+          reps: 10,
+          sets: 3,
+          durationSeconds: null,
+          notes: 'Upper chest pump',
+        },
+      ],
+      sessionName: 'Chest Day',
+      notes: 'Great workout',
+    }
+
+    const session = await saveAiWorkout(workoutData)
+    expect(session).toBeDefined()
+    expect(session.status).toBe('completed')
+    expect(session.name).toBe('Chest Day')
+
+    // Both exercises created in database
+    const exercises = await db.exercises.toArray()
+    expect(exercises.some((e) => e.name === 'Bench Press')).toBe(true)
+    expect(exercises.some((e) => e.name === 'Incline DB Press')).toBe(true)
+
+    // WorkoutExercises associated with this session
+    const workoutExercises = await db.workoutExercises
+      .where('workoutId')
+      .equals(session.id)
+      .toArray()
+    expect(workoutExercises.length).toBe(2)
+
+    // 6 total sets (3 for each exercise)
+    const sets = await db.exerciseSets.toArray()
+    expect(sets.length).toBe(6)
+  })
+
+  // Test 14: saveAiMeal handles multiple food items under different meal types
+  it('14. saveAiMeal handles multiple food items under different meal types', async () => {
+    const confirmed: ConfirmedMeal = {
+      meals: [
+        {
+          mealName: '2 Scrambled Eggs with Toast',
+          mealType: 'breakfast',
+          servingDescription: '2 eggs, 2 slices',
+          calories: 340,
+          proteinG: 18,
+          carbsG: 28,
+          fatG: 14,
+          portionPercent: 100,
+        },
+        {
+          mealName: 'Grilled Chicken Breast and Rice',
+          mealType: 'lunch',
+          servingDescription: '200g chicken, 150g rice',
+          calories: 520,
+          proteinG: 46,
+          carbsG: 55,
+          fatG: 10,
+          portionPercent: 100,
+        },
+        {
+          mealName: 'Whey Protein Shake',
+          mealType: 'snack',
+          servingDescription: '1 scoop with water',
+          calories: 140,
+          proteinG: 25,
+          carbsG: 3,
+          fatG: 2,
+          portionPercent: 100,
+        },
+      ],
+    }
+
+    const firstLog = await saveAiMeal(confirmed)
+    expect(firstLog).toBeDefined()
+
+    const allLogs = await db.mealLogs.toArray()
+    expect(allLogs.length).toBe(3)
+
+    const breakfastLog = allLogs.find((l) => l.mealType === 'breakfast')
+    expect(breakfastLog).toBeDefined()
+    expect(breakfastLog?.nutritionSnapshot.calories).toBe(340)
+
+    const lunchLog = allLogs.find((l) => l.mealType === 'lunch')
+    expect(lunchLog).toBeDefined()
+    expect(lunchLog?.nutritionSnapshot.calories).toBe(520)
+
+    const snackLog = allLogs.find((l) => l.mealType === 'snack')
+    expect(snackLog).toBeDefined()
+    expect(snackLog?.nutritionSnapshot.calories).toBe(140)
+  })
 })

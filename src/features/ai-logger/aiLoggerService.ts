@@ -13,7 +13,15 @@ import {
 import type { WorkoutSession } from '../workouts/types'
 import { createMeal, fetchSavedMeals, logMeal } from '../nutrition/nutritionService'
 import type { MealLog } from '../nutrition/types'
-import type { AiProvider, ConfirmedMeal, ConfirmedWorkout, ParsedMeal, ParsedWorkout } from './types'
+import type {
+  AiProvider,
+  ConfirmedExerciseItem,
+  ConfirmedMeal,
+  ConfirmedMealItem,
+  ConfirmedWorkout,
+  ParsedMeal,
+  ParsedWorkout,
+} from './types'
 
 const WORKER_URL =
   (import.meta.env.VITE_WORKER_URL as string | undefined)?.replace(/\/+$/, '') ??
@@ -128,75 +136,142 @@ export async function parseMealMessage(
 export async function saveAiMeal(
   confirmed: ConfirmedMeal,
 ): Promise<MealLog> {
-  const existing = await fetchSavedMeals(confirmed.mealName)
-  let savedMeal = existing.find(
-    (m) => m.name.toLowerCase() === confirmed.mealName.toLowerCase().trim(),
-  )
+  const mealItems: ConfirmedMealItem[] =
+    confirmed.meals && confirmed.meals.length > 0
+      ? confirmed.meals
+      : confirmed.mealName
+        ? [
+            {
+              mealName: confirmed.mealName,
+              mealType: confirmed.mealType ?? 'snack',
+              servingDescription: confirmed.servingDescription ?? '1 serving',
+              calories: confirmed.calories ?? 0,
+              proteinG: confirmed.proteinG ?? 0,
+              carbsG: confirmed.carbsG ?? 0,
+              fatG: confirmed.fatG ?? 0,
+              portionPercent: confirmed.portionPercent ?? 100,
+              consumedAt: confirmed.consumedAt,
+              notes: confirmed.notes,
+            },
+          ]
+        : []
 
-  if (!savedMeal) {
-    savedMeal = await createMeal({
-      name: confirmed.mealName.trim(),
-      servingDescription: confirmed.servingDescription.trim() || '1 serving',
-      calorieSource: 'manual',
-      calories: Math.max(0, Math.round(confirmed.calories)),
-      proteinG: Math.max(0, confirmed.proteinG),
-      carbsG: Math.max(0, confirmed.carbsG),
-      fatG: Math.max(0, confirmed.fatG),
-    })
+  if (mealItems.length === 0) {
+    throw new Error('No meal data provided to save.')
   }
 
-  const consumedAt = confirmed.consumedAt || new Date().toISOString()
-  const portionPercent =
-    confirmed.portionPercent > 0 ? confirmed.portionPercent : 100
+  let firstLog: MealLog | null = null
 
-  return logMeal({
-    savedMealId: savedMeal.id,
-    consumedAt,
-    mealType: confirmed.mealType,
-    portionPercent,
-  })
+  for (const item of mealItems) {
+    const existing = await fetchSavedMeals(item.mealName)
+    let savedMeal = existing.find(
+      (m) => m.name.toLowerCase() === item.mealName.toLowerCase().trim(),
+    )
+
+    if (!savedMeal) {
+      savedMeal = await createMeal({
+        name: item.mealName.trim(),
+        servingDescription: item.servingDescription.trim() || '1 serving',
+        calorieSource: 'manual',
+        calories: Math.max(0, Math.round(item.calories)),
+        proteinG: Math.max(0, item.proteinG),
+        carbsG: Math.max(0, item.carbsG),
+        fatG: Math.max(0, item.fatG),
+      })
+    }
+
+    const consumedAt =
+      item.consumedAt || confirmed.consumedAt || new Date().toISOString()
+    const portionPercent =
+      item.portionPercent > 0 ? item.portionPercent : 100
+
+    const log = await logMeal({
+      savedMealId: savedMeal.id,
+      consumedAt,
+      mealType: item.mealType,
+      portionPercent,
+    })
+
+    if (!firstLog) {
+      firstLog = log
+    }
+  }
+
+  return firstLog!
 }
 
 export async function saveAiWorkout(
   confirmed: ConfirmedWorkout,
 ): Promise<WorkoutSession> {
+  const exerciseItems: ConfirmedExerciseItem[] =
+    confirmed.exercises && confirmed.exercises.length > 0
+      ? confirmed.exercises
+      : confirmed.exercise
+        ? [
+            {
+              exercise: confirmed.exercise,
+              weight: confirmed.weight ?? null,
+              unit: confirmed.unit ?? 'kg',
+              reps: confirmed.reps ?? 1,
+              sets: confirmed.sets ?? 1,
+              durationSeconds: confirmed.durationSeconds ?? null,
+              notes: confirmed.notes ?? '',
+            },
+          ]
+        : []
+
+  if (exerciseItems.length === 0) {
+    throw new Error('No exercise data provided to save.')
+  }
+
   let session: WorkoutSession | null = null
   try {
-    session = await startWorkout('AI Workout')
+    session = await startWorkout(confirmed.sessionName || 'AI Workout')
 
-    if (confirmed.notes) {
-      await saveWorkoutNotes(session.id, confirmed.notes)
+    const combinedNotes =
+      confirmed.notes ||
+      exerciseItems
+        .map((e) => e.notes)
+        .filter(Boolean)
+        .join('; ')
+
+    if (combinedNotes) {
+      await saveWorkoutNotes(session.id, combinedNotes)
     }
 
-    const exercises = await findExercises(confirmed.exercise)
-    let exercise = exercises.find(
-      (item) =>
-        item.name.toLowerCase() === confirmed.exercise.toLowerCase().trim(),
-    )
-    if (!exercise) {
-      exercise = await createCustomExercise({
-        name: confirmed.exercise.trim(),
-        category: 'other',
-        equipment: null,
-      })
-    }
+    for (const item of exerciseItems) {
+      const exercises = await findExercises(item.exercise)
+      let exercise = exercises.find(
+        (e) => e.name.toLowerCase() === item.exercise.toLowerCase().trim(),
+      )
+      if (!exercise) {
+        exercise = await createCustomExercise({
+          name: item.exercise.trim(),
+          category: 'other',
+          equipment: null,
+        })
+      }
 
-    const workoutExercise = await addExerciseToWorkout(session.id, exercise.id)
+      const workoutExercise = await addExerciseToWorkout(session.id, exercise.id)
 
-    const rawWeight = confirmed.weight ?? 0
-    const weightKg =
-      confirmed.unit === 'lbs'
-        ? Math.round(rawWeight * 0.453592 * 100) / 100
-        : Math.round(rawWeight * 100) / 100
+      const rawWeight = item.weight ?? 0
+      const weightKg =
+        item.unit === 'lbs'
+          ? Math.round(rawWeight * 0.453592 * 100) / 100
+          : Math.round(rawWeight * 100) / 100
 
-    for (let setNumber = 1; setNumber <= confirmed.sets; setNumber++) {
-      await createSet({
-        workoutExerciseId: workoutExercise.id,
-        setNumber,
-        weightKg,
-        reps: confirmed.reps,
-        completed: true,
-      })
+      const setsCount = item.sets && item.sets > 0 ? item.sets : 1
+      const repsCount = item.reps && item.reps > 0 ? item.reps : 1
+
+      for (let setNumber = 1; setNumber <= setsCount; setNumber++) {
+        await createSet({
+          workoutExerciseId: workoutExercise.id,
+          setNumber,
+          weightKg,
+          reps: repsCount,
+          completed: true,
+        })
+      }
     }
 
     const completedSession = await finishWorkout(session.id)
@@ -204,9 +279,11 @@ export async function saveAiWorkout(
     try {
       await createAiWorkoutLog({
         workoutSessionId: completedSession.id,
-        originalMessage: confirmed.notes || confirmed.exercise,
+        originalMessage:
+          combinedNotes ||
+          exerciseItems.map((e) => e.exercise).join(', '),
         provider: 'gemini',
-        parsedExercise: confirmed.exercise,
+        parsedExercise: exerciseItems.map((e) => e.exercise).join(', '),
         confidence: 'high',
       })
     } catch {

@@ -458,6 +458,17 @@ describe('Forge/Fit Worker Backend', () => {
     })
 
     expect(validWorkout).toEqual({
+      exercises: [
+        {
+          exercise: 'Bench Press',
+          weight: 80,
+          unit: 'kg',
+          reps: 10,
+          sets: 3,
+          durationSeconds: null,
+          notes: 'Felt strong',
+        },
+      ],
       exercise: 'Bench Press',
       weight: 80,
       unit: 'kg',
@@ -534,6 +545,17 @@ describe('Forge/Fit Worker Backend', () => {
     expect(body).toEqual({
       ok: true,
       data: {
+        exercises: [
+          {
+            exercise: 'Incline Dumbbell Press',
+            weight: 32,
+            unit: 'kg',
+            reps: 8,
+            sets: 4,
+            durationSeconds: null,
+            notes: 'RPE 8',
+          },
+        ],
         exercise: 'Incline Dumbbell Press',
         weight: 32,
         unit: 'kg',
@@ -769,6 +791,18 @@ describe('Forge/Fit Worker Backend', () => {
     expect(body).toEqual({
       ok: true,
       data: {
+        meals: [
+          {
+            mealName: 'Greek Yogurt with Berries',
+            mealType: 'breakfast',
+            servingDescription: '1 bowl (200g)',
+            calories: 220,
+            proteinG: 20,
+            carbsG: 25,
+            fatG: 4,
+            notes: null,
+          },
+        ],
         mealName: 'Greek Yogurt with Berries',
         mealType: 'breakfast',
         servingDescription: '1 bowl (200g)',
@@ -781,5 +815,79 @@ describe('Forge/Fit Worker Backend', () => {
         followUpQuestion: null,
       },
     })
+  })
+
+  it('validateParsedWorkout supports multiple exercises extracted at once', () => {
+    const raw = {
+      exercises: [
+        {
+          exercise: 'Bench Press',
+          weight: 80,
+          unit: 'kg',
+          reps: 8,
+          sets: 3,
+        },
+        {
+          exercise: 'Incline DB Press',
+          weight: 24,
+          unit: 'kg',
+          reps: 10,
+          sets: 3,
+        },
+      ],
+      confidence: 'high',
+    }
+
+    const validated = validateParsedWorkout(raw)
+    expect(validated.exercises.length).toBe(2)
+    expect(validated.exercises[0].exercise).toBe('Bench Press')
+    expect(validated.exercises[1].exercise).toBe('Incline DB Press')
+    expect(validated.exercise).toBe('Bench Press')
+    expect(validated.confidence).toBe('high')
+  })
+
+  it('validateParsedMeal supports multiple food items across same or different meal types', () => {
+    const raw = {
+      meals: [
+        {
+          mealName: 'Eggs and Toast',
+          mealType: 'breakfast',
+          servingDescription: '2 eggs, 2 toast',
+          calories: 350,
+          proteinG: 18,
+          carbsG: 30,
+          fatG: 14,
+        },
+        {
+          mealName: 'Chicken Rice Bowl',
+          mealType: 'lunch',
+          servingDescription: '1 bowl',
+          calories: 550,
+          proteinG: 45,
+          carbsG: 60,
+          fatG: 12,
+        },
+        {
+          mealName: 'Protein Shake',
+          mealType: 'snack',
+          servingDescription: '1 scoop with milk',
+          calories: 200,
+          proteinG: 30,
+          carbsG: 10,
+          fatG: 4,
+        },
+      ],
+      confidence: 'high',
+    }
+
+    const validated = validateParsedMeal(raw)
+    expect(validated.meals.length).toBe(3)
+    expect(validated.meals[0].mealType).toBe('breakfast')
+    expect(validated.meals[1].mealType).toBe('lunch')
+    expect(validated.meals[2].mealType).toBe('snack')
+    expect(validated.calories).toBe(1100) // 350 + 550 + 200
+    expect(validated.proteinG).toBe(93) // 18 + 45 + 30
+    expect(validated.carbsG).toBe(100) // 30 + 60 + 10
+    expect(validated.fatG).toBe(30) // 14 + 12 + 4
   })
 })

@@ -32,17 +32,17 @@ import type {
 } from '../../ai-logger/types'
 
 const WORKOUT_EXAMPLES = [
-  'Bench press 80kg 3x8',
-  'Squats 100kg 5x5',
-  'Incline DB press 24kg 3x10',
+  'Bench press 80kg 3x8, Incline DB press 24kg 3x10',
+  'Squats 100kg 5x5, Leg press 180kg 3x10',
+  'Pull-ups 4x10, Barbell rows 60kg 3x12',
   '5km run in 25 min',
 ]
 
 const NUTRITION_EXAMPLES = [
-  '2 eggs & toast with coffee',
-  '200g chicken breast & 150g rice',
-  'Whey protein shake with milk',
-  'Oatmeal with berries & peanut butter',
+  'Breakfast: 2 eggs & toast, Lunch: chicken & rice, Snack: protein shake',
+  '2 eggs & toast with black coffee',
+  'Lunch: 200g chicken breast, 150g rice, and broccoli',
+  'Snack: Whey protein shake with milk and a banana',
 ]
 
 interface DashboardAiLoggerProps {
@@ -133,8 +133,12 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
     setSaveError(null)
     try {
       await saveAiWorkout(confirmed)
+      const count = confirmed.exercises?.length ?? 1
+      const names = confirmed.exercises
+        ? confirmed.exercises.map((e) => e.exercise).join(', ')
+        : confirmed.exercise
       setSaveSuccess(
-        `Workout "${confirmed.exercise}" saved! Your progress charts have been updated.`,
+        `Workout saved (${count} ${count === 1 ? 'exercise' : 'exercises'}: ${names})! Your progress charts have been updated.`,
       )
       setPendingWorkout(null)
       setInputText('')
@@ -153,8 +157,10 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
     setSaveError(null)
     try {
       await saveAiMeal(confirmed)
+      const count = confirmed.meals?.length ?? 1
+      const cal = confirmed.calories ?? 0
       setSaveSuccess(
-        `Meal "${confirmed.mealName}" (~${confirmed.calories} kcal) logged! Your nutrition totals have been updated.`,
+        `${count} ${count === 1 ? 'meal' : 'food items'} (~${cal} kcal) logged! Your nutrition totals have been updated.`,
       )
       setPendingMeal(null)
       setInputText('')
@@ -385,8 +391,8 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
               disabled={parsing || saving}
               placeholder={
                 mode === 'workout'
-                  ? 'e.g. 3 sets bench press 80kg 8 reps, 4 sets dumbbell rows 24kg 10 reps...'
-                  : 'e.g. 2 scrambled eggs, 2 slices whole wheat toast with butter, black coffee...'
+                  ? 'e.g. Bench press 80kg 3x8, Incline DB press 24kg 3x10, Lateral raise 10kg 3x15...'
+                  : 'e.g. Breakfast: 2 eggs & toast. Lunch: 200g chicken with rice. Snack: protein shake...'
               }
               aria-label={
                 mode === 'workout' ? 'Describe your workout' : 'Describe your meal'

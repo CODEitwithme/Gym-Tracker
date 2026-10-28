@@ -1,5 +1,5 @@
 import { createElement, lazy } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { Navigate, createBrowserRouter } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout'
 
 const dashboardPage = lazy(() => import('../features/dashboard/DashboardPage'))
@@ -33,6 +33,7 @@ export const router = createBrowserRouter([
       { path: 'nutrition', element: createElement(nutritionPage) },
       { path: 'nutrition/meals', element: createElement(savedMealsPage) },
       { path: 'ai-logger', element: createElement(aiLoggerPage) },
+      { path: 'settings', element: <Navigate to="/settings/ai" replace /> },
       { path: 'settings/ai', element: createElement(aiSettingsPage) },
       { path: 'settings/data', element: createElement(dataManagementPage) },
       { path: '*', element: createElement(notFoundPage) },

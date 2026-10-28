@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, Apple, Dumbbell, RefreshCw } from 'lucide-react'
+import { Activity, Apple, Bot, Dumbbell, RefreshCw } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Button, Card, EmptyState } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
+import DashboardAiLogger from './components/DashboardAiLogger'
 import {
   getSavedNutritionGoals,
 } from '../nutrition/nutritionService'
@@ -158,6 +159,7 @@ function DashboardPage() {
           onRetryExercise={() => {
             if (exerciseId) void dispatch(loadExerciseProgressThunk(exerciseId))
           }}
+          onActivityLogged={() => void dispatch(loadDashboardThunk(period))}
         />
       )}
     </PageContainer>
@@ -173,6 +175,7 @@ function DashboardContent({
   exerciseError,
   onChooseExercise,
   onRetryExercise,
+  onActivityLogged,
 }: {
   analytics: DashboardAnalytics
   nutritionGoals: DailyNutritionGoals | null
@@ -182,6 +185,7 @@ function DashboardContent({
   exerciseError: string | null
   onChooseExercise: (id: string) => void
   onRetryExercise: () => void
+  onActivityLogged: () => void
 }) {
   const [nutritionMetric, setNutritionMetric] =
     useState<keyof DailyNutritionTotals>('calories')
@@ -191,6 +195,8 @@ function DashboardContent({
 
   return (
     <div className="space-y-8">
+      <DashboardAiLogger onActivityLogged={onActivityLogged} />
+
       {!hasAnyHistory && (
         <Card>
           <EmptyState
@@ -199,8 +205,11 @@ function DashboardContent({
             description="Start a workout or log a meal to see your real progress here. Unlogged days are not evidence of zero intake."
             action={
               <div className="flex flex-wrap justify-center gap-2">
+                <Link to="/ai-logger">
+                  <Button icon={Bot}>Log with AI</Button>
+                </Link>
                 <Link to="/workouts">
-                  <Button icon={Dumbbell}>Go to workouts</Button>
+                  <Button variant="outline" icon={Dumbbell}>Go to workouts</Button>
                 </Link>
                 <Link to="/nutrition">
                   <Button variant="outline" icon={Apple}>Log a meal</Button>

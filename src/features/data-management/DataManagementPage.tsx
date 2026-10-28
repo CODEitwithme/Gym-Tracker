@@ -3,6 +3,7 @@ import { Download, Dumbbell, FileArchive, FileSpreadsheet, ShieldCheck, Trash2 }
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, Modal } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
+import SettingsNav from '../../components/layout/SettingsNav'
 import { loadActiveWorkoutThunk } from '../workouts/workoutThunks'
 import {
   loadDashboardThunk,
@@ -282,6 +283,8 @@ function DataManagementPage() {
           unless you download or restore a file.
         </p>
       </header>
+
+      <SettingsNav />
 
       {statusMessage && (
         <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">

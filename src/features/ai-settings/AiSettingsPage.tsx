@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Badge, Button, Card, Input, Modal } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
+import SettingsNav from '../../components/layout/SettingsNav'
 import {
   deleteAiCredentials,
   getAiCredentials,
@@ -187,14 +188,14 @@ export function AiSettingsPage() {
           <p className="text-sm font-medium text-accent">Settings</p>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          AI Settings
+          AI Logger Settings
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Configure your Bring-Your-Own-Key (BYOK) AI provider. Your API key is
-          encrypted using AES-256-GCM and stored only on your private Cloudflare
-          Worker. It is never exposed in the browser or logged.
+          Configure your Bring-Your-Own-Key (BYOK) Google Gemini AI provider for natural language workout and nutrition logging. Your API key is encrypted using AES-256-GCM and stored only on your private Cloudflare Worker.
         </p>
       </header>
+
+      <SettingsNav />
 
       {statusMessage && (
         <div

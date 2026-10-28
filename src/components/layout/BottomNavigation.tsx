@@ -30,7 +30,7 @@ function BottomNavigation() {
             }
           >
             <Icon aria-hidden="true" size={19} />
-            <span>{label === 'Settings' ? 'Data' : label}</span>
+            <span>{label}</span>
           </NavLink>
         ))}
     </nav>
@@ -38,4 +38,3 @@ function BottomNavigation() {
 }
 
 export default BottomNavigation
- 

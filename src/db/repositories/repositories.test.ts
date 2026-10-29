@@ -35,6 +35,7 @@ import {
 import {
   createWorkoutSession,
   listWorkoutSessions,
+  listWorkoutSessionsPage,
   softDeleteWorkoutSession,
   updateWorkoutSession,
 } from './workoutSessions'
@@ -175,6 +176,50 @@ describe('repositories', () => {
     const deletedWorkout = await softDeleteWorkoutSession(workout.id, testDatabase)
     expect(deletedWorkout.deletedAt).not.toBeNull()
     expect(await listWorkoutSessions(testDatabase)).toHaveLength(0)
+  })
+
+  it('paginates workout sessions with keyset cursor pagination', async () => {
+    await createWorkoutSession(
+      {
+        name: 'Session 1',
+        startedAt: '2025-01-01T10:00:00.000Z',
+        completedAt: '2025-01-01T11:00:00.000Z',
+        status: 'completed',
+        notes: '',
+      },
+      testDatabase,
+    )
+    await createWorkoutSession(
+      {
+        name: 'Session 2',
+        startedAt: '2025-01-02T10:00:00.000Z',
+        completedAt: '2025-01-02T11:00:00.000Z',
+        status: 'completed',
+        notes: '',
+      },
+      testDatabase,
+    )
+    await createWorkoutSession(
+      {
+        name: 'Session 3',
+        startedAt: '2025-01-03T10:00:00.000Z',
+        completedAt: '2025-01-03T11:00:00.000Z',
+        status: 'completed',
+        notes: '',
+      },
+      testDatabase,
+    )
+
+    const page1 = await listWorkoutSessionsPage({ limit: 2 }, testDatabase)
+    expect(page1).toHaveLength(2)
+    expect(page1.map((s) => s.name)).toEqual(['Session 3', 'Session 2'])
+
+    const page2 = await listWorkoutSessionsPage(
+      { cursorStartedAt: page1[1].startedAt, limit: 2 },
+      testDatabase,
+    )
+    expect(page2).toHaveLength(1)
+    expect(page2[0].name).toBe('Session 1')
   })
 
   it('does not create a workout exercise when its related record is missing', async () => {

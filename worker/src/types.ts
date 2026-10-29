@@ -11,6 +11,8 @@ export interface StoredCredential {
   iv: string // hex
   tag: string // hex
   ciphertext: string // hex
+  version?: number // 1 = legacy AES-GCM; 2 = HKDF per-tenant + AAD
+  deviceToken?: string
 }
 
 export interface ParsedExerciseItem {

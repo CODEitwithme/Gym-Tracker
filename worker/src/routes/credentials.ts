@@ -1,5 +1,6 @@
 import type { ApiError, ApiResponse, Env, StoredCredential } from '../types'
 import { encrypt } from '../encryption'
+import { clearKeyCache } from './ai'
 
 function jsonResponse<T>(data: T, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -62,12 +63,15 @@ export async function handlePutCredentials(
     )
   }
 
-  const encrypted = await encrypt(env.MASTER_ENCRYPTION_KEY, apiKey)
+  // Encrypt with HKDF per-tenant key derivation and AAD binding
+  const encrypted = await encrypt(env.MASTER_ENCRYPTION_KEY, apiKey, deviceToken)
   const storedCredential: StoredCredential = {
     provider: 'gemini',
     iv: encrypted.iv,
     tag: encrypted.tag,
     ciphertext: encrypted.ciphertext,
+    version: encrypted.version,
+    deviceToken: encrypted.deviceToken,
   }
 
   await env.CREDENTIAL_STORE.put(
@@ -75,6 +79,9 @@ export async function handlePutCredentials(
     JSON.stringify(storedCredential),
     { expirationTtl: 7776000 } // 90 days in seconds
   )
+
+  // Invalidate any cached decrypted key
+  clearKeyCache(deviceToken)
 
   return jsonResponse<ApiResponse<{ provider: 'gemini'; hasKey: boolean }>>({
     ok: true,
@@ -90,6 +97,7 @@ export async function handleDeleteCredentials(
   env: Env
 ): Promise<Response> {
   await env.CREDENTIAL_STORE.delete(`cred:${deviceToken}`)
+  clearKeyCache(deviceToken)
   return jsonResponse<ApiResponse<null>>({
     ok: true,
     data: null,

@@ -890,4 +890,46 @@ describe('Forge/Fit Worker Backend', () => {
     expect(validated.carbsG).toBe(100) // 30 + 60 + 10
     expect(validated.fatG).toBe(30) // 14 + 12 + 4
   })
+
+  // Test 20: Backward compatibility with 500 existing users (v1 legacy credential decryption)
+  it('decrypt successfully recovers legacy v1 credentials without deviceToken or version', async () => {
+    const rawApiKey = 'AIzaSyLegacyKey12345'
+    // Encrypt using legacy v1 method (no deviceToken passed)
+    const legacyEncrypted = await encrypt(TEST_MASTER_KEY, rawApiKey)
+    expect(legacyEncrypted.version).toBe(1)
+
+    // Decrypting as legacy without version in stored object
+    const recovered = await decrypt(TEST_MASTER_KEY, {
+      iv: legacyEncrypted.iv,
+      tag: legacyEncrypted.tag,
+      ciphertext: legacyEncrypted.ciphertext,
+    })
+    expect(recovered).toBe(rawApiKey)
+  })
+
+  // Test 21: HKDF per-tenant encryption enforces AAD binding
+  it('decrypt with HKDF and AAD fails if deviceToken is mismatched', async () => {
+    const rawApiKey = 'AIzaSyTenantBoundKey999'
+    const tenantEncrypted = await encrypt(TEST_MASTER_KEY, rawApiKey, TEST_DEVICE_TOKEN)
+    expect(tenantEncrypted.version).toBe(2)
+
+    // Decrypt with correct deviceToken succeeds
+    const recovered = await decrypt(TEST_MASTER_KEY, tenantEncrypted, TEST_DEVICE_TOKEN)
+    expect(recovered).toBe(rawApiKey)
+
+    // Decrypt with wrong deviceToken fails
+    await expect(
+      decrypt(
+        TEST_MASTER_KEY,
+        {
+          iv: tenantEncrypted.iv,
+          tag: tenantEncrypted.tag,
+          ciphertext: tenantEncrypted.ciphertext,
+          version: 2,
+          deviceToken: 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e', // different deviceToken
+        },
+        'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e'
+      )
+    ).rejects.toThrow()
+  })
 })

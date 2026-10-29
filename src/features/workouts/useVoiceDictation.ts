@@ -93,7 +93,17 @@ export function useVoiceDictation(onTranscript: (newText: string) => void) {
       }
 
       recognition.onerror = (event: { error: string }) => {
-        if (event.error !== 'no-speech') {
+        if (event.error === 'no-speech') {
+          // Timeout with no speech detected
+        } else if (event.error === 'network') {
+          setError(
+            'Voice recognition requires an active network connection in this browser. Please type or use your device keyboard dictation.',
+          )
+        } else if (event.error === 'not-allowed') {
+          setError(
+            'Microphone access was denied. Please grant microphone permissions in browser settings.',
+          )
+        } else {
           setError(`Mic error: ${event.error}`)
         }
         setIsListening(false)

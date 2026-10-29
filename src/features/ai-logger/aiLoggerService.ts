@@ -31,6 +31,8 @@ const WORKER_URL =
   'http://localhost:8787'
 
 const DEVICE_TOKEN_KEY = 'forge-fit-device-token'
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function isWorkerConfigured(): boolean {
   return Boolean(import.meta.env.VITE_WORKER_URL || import.meta.env.DEV)
@@ -38,7 +40,7 @@ export function isWorkerConfigured(): boolean {
 
 export function getDeviceToken(): string {
   let token = localStorage.getItem(DEVICE_TOKEN_KEY)
-  if (!token) {
+  if (!token || !UUID_REGEX.test(token)) {
     token = createUUID()
     localStorage.setItem(DEVICE_TOKEN_KEY, token)
   }

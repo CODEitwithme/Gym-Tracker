@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { GymTrackerDatabase } from '../../db/database'
+import { GymTrackerDatabase, DATABASE_VERSION } from '../../db/database'
 import { addExerciseSet, addWorkoutExercise } from '../../db/repositories/workoutDetails'
 import { createExercise } from '../../db/repositories/exercises'
 import {
@@ -193,6 +193,12 @@ describe('versioned JSON backup', () => {
     expect(() => validateBackup({ ...backup, backupVersion: 99 })).toThrow(
       /format version/,
     )
+    expect(() => validateBackup({ ...backup, schemaVersion: 0 })).toThrow(
+      /older than the supported version/,
+    )
+    const v1Backup = { ...backup, schemaVersion: 1 }
+    const validatedV1 = validateBackup(v1Backup)
+    expect(validatedV1.schemaVersion).toBe(DATABASE_VERSION)
     expect(() => validateBackup({ ...backup, schemaVersion: 99 })).toThrow(
       /newer than the supported version/,
     )

@@ -397,7 +397,8 @@ export function validateBackup(value: unknown): GymTrackerBackup {
   }
   if (
     !Number.isInteger(value.schemaVersion) ||
-    value.schemaVersion !== DATABASE_VERSION
+    (value.schemaVersion as number) < 1 ||
+    (value.schemaVersion as number) > DATABASE_VERSION
   ) {
     const schemaVersion = String(value.schemaVersion)
     const compatibility =
@@ -456,7 +457,7 @@ export function validateBackup(value: unknown): GymTrackerBackup {
   return {
     format: BACKUP_FORMAT,
     backupVersion: BACKUP_VERSION,
-    schemaVersion: value.schemaVersion,
+    schemaVersion: DATABASE_VERSION,
     appVersion: value.appVersion,
     exportedAt: value.exportedAt,
     data,

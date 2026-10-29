@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Download, Dumbbell, FileArchive, FileSpreadsheet, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, Modal } from '../../components/common'
@@ -26,6 +26,12 @@ import { createCsvExport, type CsvExportKind } from './csvExport'
 import { downloadTextFile } from './download'
 import { formatLocalDate } from '../../lib/dateTime'
 import { removeDemoData, seedDemoData } from './demoDataService'
+import {
+  checkStoragePersistence,
+  getStorageQuota,
+  requestStoragePersistence,
+  type StorageQuotaInfo,
+} from '../../lib/storagePersistence'
 
 const csvOptions: Array<{ kind: CsvExportKind; label: string; filename: string }> = [
   {
@@ -85,6 +91,51 @@ function DataManagementPage() {
     null,
   )
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isPersisted, setIsPersisted] = useState<boolean | null>(null)
+  const [quotaInfo, setQuotaInfo] = useState<StorageQuotaInfo | null>(null)
+  const [requestingPersist, setRequestingPersist] = useState(false)
+
+  const refreshStorage = async () => {
+    const [persisted, quota] = await Promise.all([
+      checkStoragePersistence(),
+      getStorageQuota(),
+    ])
+    setIsPersisted(persisted)
+    setQuotaInfo(quota)
+  }
+
+  useEffect(() => {
+    let active = true
+    Promise.all([checkStoragePersistence(), getStorageQuota()]).then(([persisted, quota]) => {
+      if (active) {
+        setIsPersisted(persisted)
+        setQuotaInfo(quota)
+      }
+    }).catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleRequestPersistence = async () => {
+    setRequestingPersist(true)
+    try {
+      const granted = await requestStoragePersistence()
+      setIsPersisted(granted)
+      if (granted) {
+        await refreshStorage()
+        setStatusMessage(
+          'Persistent storage granted. The browser will protect your local fitness data from eviction.',
+        )
+      } else {
+        setStatusMessage(
+          'Persistence could not be granted automatically. If using iOS Safari, install this app to your Home Screen to protect your data.',
+        )
+      }
+    } finally {
+      setRequestingPersist(false)
+    }
+  }
 
   const exportBackup = async () => {
     if (busy) return
@@ -338,6 +389,47 @@ function DataManagementPage() {
                   Remove demo data
                 </Button>
               </div>
+            </div>
+          </Card>
+        </section>
+
+        <section aria-labelledby="storage-persistence-title">
+          <Card
+            title="Storage health & persistence"
+            description="Manage browser storage quota and protect against Safari/iOS 7-day eviction."
+            actions={
+              <Badge variant={isPersisted ? 'success' : 'warning'}>
+                {isPersisted === null ? 'Checking...' : isPersisted ? 'Persistent' : 'Best effort'}
+              </Badge>
+            }
+          >
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="min-w-0 space-y-1">
+                <h2 id="storage-persistence-title" className="sr-only">Storage Persistence</h2>
+                <p className="text-sm leading-6 text-muted">
+                  IndexedDB stores your workouts, exercises, and meals directly in this browser.
+                  {isPersisted
+                    ? ' Storage is persistent and protected against automatic cache eviction.'
+                    : ' Storage is currently best-effort. In Safari/iOS, unvisited sites may be evicted after 7 days unless persisted or added to your Home Screen.'}
+                </p>
+                {quotaInfo && (
+                  <p className="text-xs text-muted">
+                    Estimated storage used: <span className="font-medium text-ink">{quotaInfo.usageMb} MB</span> of {quotaInfo.quotaMb} MB available ({quotaInfo.percentUsed}%)
+                  </p>
+                )}
+              </div>
+              {!isPersisted && (
+                <Button
+                  size="small"
+                  variant="outline"
+                  icon={ShieldCheck}
+                  loading={requestingPersist}
+                  disabled={requestingPersist || busy}
+                  onClick={() => void handleRequestPersistence()}
+                >
+                  Request persistence
+                </Button>
+              )}
             </div>
           </Card>
         </section>

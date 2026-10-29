@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+[placement]
+mode = "smart"
+
 [[kv_namespaces]]
 binding = "CREDENTIAL_STORE"
 id = "fda2fd50c33545938786dae80a14f5fb"

@@ -1,5 +1,5 @@
 import type { ApiError, ApiResponse, Env, ParsedMeal, ParsedWorkout, StoredCredential } from '../types'
-import { decrypt } from '../encryption'
+import { decrypt, encrypt } from '../encryption'
 import { callGemini, callGeminiMeal, GeminiApiError } from '../geminiAdapter'
 import type { RateLimiter } from '../rateLimit'
 
@@ -12,12 +12,63 @@ function jsonResponse<T>(data: T, status = 200): Response {
   })
 }
 
-async function getDecryptedApiKey(deviceToken: string, env: Env): Promise<string | null> {
+// In-isolate memory cache for active user API keys (avoids repetitive KV reads & crypto)
+const KEY_CACHE = new Map<string, { key: string; expiresAt: number }>()
+
+export function clearKeyCache(deviceToken?: string): void {
+  if (deviceToken) {
+    KEY_CACHE.delete(deviceToken)
+  } else {
+    KEY_CACHE.clear()
+  }
+}
+
+async function getDecryptedApiKey(
+  deviceToken: string,
+  env: Env,
+  ctx?: ExecutionContext
+): Promise<string | null> {
+  const cached = KEY_CACHE.get(deviceToken)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.key
+  }
+
   const storedJson = await env.CREDENTIAL_STORE.get(`cred:${deviceToken}`)
   if (!storedJson) return null
   try {
     const stored = JSON.parse(storedJson) as StoredCredential
-    return await decrypt(env.MASTER_ENCRYPTION_KEY, stored)
+    const decrypted = await decrypt(env.MASTER_ENCRYPTION_KEY, stored, deviceToken)
+    if (decrypted) {
+      KEY_CACHE.set(deviceToken, {
+        key: decrypted,
+        expiresAt: Date.now() + 120_000, // 2 minutes RAM cache
+      })
+
+      // Silently upgrade legacy v1 credentials to v2 (HKDF + AAD) in background
+      if (stored.version !== 2 && ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(
+          (async () => {
+            try {
+              const upgraded = await encrypt(env.MASTER_ENCRYPTION_KEY, decrypted, deviceToken)
+              await env.CREDENTIAL_STORE.put(
+                `cred:${deviceToken}`,
+                JSON.stringify({
+                  provider: stored.provider,
+                  iv: upgraded.iv,
+                  tag: upgraded.tag,
+                  ciphertext: upgraded.ciphertext,
+                  version: upgraded.version,
+                }),
+                { expirationTtl: 7776000 }
+              )
+            } catch {
+              // Ignore background migration failure
+            }
+          })()
+        )
+      }
+    }
+    return decrypted
   } catch {
     return null
   }
@@ -26,7 +77,8 @@ async function getDecryptedApiKey(deviceToken: string, env: Env): Promise<string
 export async function handleTestConnection(
   deviceToken: string,
   env: Env,
-  rateLimiter: RateLimiter
+  rateLimiter: RateLimiter,
+  ctx?: ExecutionContext
 ): Promise<Response> {
   if (!(await rateLimiter.check(deviceToken, env.CREDENTIAL_STORE))) {
     return jsonResponse<ApiError>(
@@ -35,7 +87,7 @@ export async function handleTestConnection(
     )
   }
 
-  const apiKey = await getDecryptedApiKey(deviceToken, env)
+  const apiKey = await getDecryptedApiKey(deviceToken, env, ctx)
   if (!apiKey) {
     return jsonResponse<ApiError>(
       { ok: false, error: 'No credentials configured', code: 'NO_CREDENTIALS' },
@@ -71,7 +123,8 @@ export async function handleParseWorkout(
   deviceToken: string,
   body: unknown,
   env: Env,
-  rateLimiter: RateLimiter
+  rateLimiter: RateLimiter,
+  ctx?: ExecutionContext
 ): Promise<Response> {
   if (!(await rateLimiter.check(deviceToken, env.CREDENTIAL_STORE))) {
     return jsonResponse<ApiError>(
@@ -103,7 +156,7 @@ export async function handleParseWorkout(
     )
   }
 
-  const apiKey = await getDecryptedApiKey(deviceToken, env)
+  const apiKey = await getDecryptedApiKey(deviceToken, env, ctx)
   if (!apiKey) {
     return jsonResponse<ApiError>(
       { ok: false, error: 'No credentials configured', code: 'NO_CREDENTIALS' },
@@ -136,7 +189,8 @@ export async function handleParseMeal(
   deviceToken: string,
   body: unknown,
   env: Env,
-  rateLimiter: RateLimiter
+  rateLimiter: RateLimiter,
+  ctx?: ExecutionContext
 ): Promise<Response> {
   if (!(await rateLimiter.check(deviceToken, env.CREDENTIAL_STORE))) {
     return jsonResponse<ApiError>(
@@ -168,7 +222,7 @@ export async function handleParseMeal(
     )
   }
 
-  const apiKey = await getDecryptedApiKey(deviceToken, env)
+  const apiKey = await getDecryptedApiKey(deviceToken, env, ctx)
   if (!apiKey) {
     return jsonResponse<ApiError>(
       { ok: false, error: 'No credentials configured', code: 'NO_CREDENTIALS' },

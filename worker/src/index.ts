@@ -77,13 +77,13 @@ router.delete('/api/settings/ai-credentials', async (request: Request, env: Env)
   return handleDeleteCredentials(auth.deviceToken, env)
 })
 
-router.post('/api/ai/test-connection', async (request: Request, env: Env) => {
+router.post('/api/ai/test-connection', async (request: Request, env: Env, ctx?: ExecutionContext) => {
   const auth = getDeviceToken(request)
   if (auth instanceof Response) return auth
-  return handleTestConnection(auth.deviceToken, env, aiRateLimiter)
+  return handleTestConnection(auth.deviceToken, env, aiRateLimiter, ctx)
 })
 
-router.post('/api/ai/parse-workout', async (request: Request, env: Env) => {
+router.post('/api/ai/parse-workout', async (request: Request, env: Env, ctx?: ExecutionContext) => {
   const auth = getDeviceToken(request)
   if (auth instanceof Response) return auth
   let body: unknown
@@ -98,10 +98,10 @@ router.post('/api/ai/parse-workout', async (request: Request, env: Env) => {
       }
     )
   }
-  return handleParseWorkout(auth.deviceToken, body, env, aiRateLimiter)
+  return handleParseWorkout(auth.deviceToken, body, env, aiRateLimiter, ctx)
 })
 
-router.post('/api/ai/parse-meal', async (request: Request, env: Env) => {
+router.post('/api/ai/parse-meal', async (request: Request, env: Env, ctx?: ExecutionContext) => {
   const auth = getDeviceToken(request)
   if (auth instanceof Response) return auth
   let body: unknown
@@ -116,7 +116,7 @@ router.post('/api/ai/parse-meal', async (request: Request, env: Env) => {
       }
     )
   }
-  return handleParseMeal(auth.deviceToken, body, env, aiRateLimiter)
+  return handleParseMeal(auth.deviceToken, body, env, aiRateLimiter, ctx)
 })
 
 const worker = {

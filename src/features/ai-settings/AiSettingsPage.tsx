@@ -106,6 +106,20 @@ export function AiSettingsPage() {
       return
     }
 
+    if (trimmedKey.startsWith('http://') || trimmedKey.startsWith('https://')) {
+      setErrorMessage(
+        'You entered a website URL instead of an API key. Please generate a free Google Gemini API key from https://aistudio.google.com/apikey and paste that key here.'
+      )
+      return
+    }
+
+    if (trimmedKey.startsWith('sk-')) {
+      setErrorMessage(
+        'This looks like an OpenAI key (starts with "sk-"). This app uses Google Gemini. Please get a free Gemini key from https://aistudio.google.com/apikey.'
+      )
+      return
+    }
+
     setSaving(true)
     setErrorMessage(null)
     setStatusMessage(null)
@@ -351,7 +365,7 @@ export function AiSettingsPage() {
                   placeholder="AIzaSy..."
                   required
                   disabled={saving}
-                  helperText="Get a key for free from Google AI Studio. Starts with 'AI'."
+                  helperText="Get your free Gemini API key from Google AI Studio (aistudio.google.com)."
                 />
 
                 <div className="flex flex-wrap items-center gap-3 pt-2">

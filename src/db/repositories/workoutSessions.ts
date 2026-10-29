@@ -15,6 +15,11 @@ export type CreateWorkoutSessionInput = Pick<
 
 export type WorkoutSessionChanges = Partial<CreateWorkoutSessionInput>
 
+export interface ListWorkoutSessionsPageOptions {
+  cursorStartedAt?: string
+  limit?: number
+}
+
 function validateSession(session: CreateWorkoutSessionInput): void {
   assertNonBlank(session.name, 'Workout name')
   assertIsoDateTime(session.startedAt, 'startedAt')
@@ -80,13 +85,29 @@ export async function getActiveWorkoutSession(
 export async function listWorkoutSessions(
   database: GymTrackerDatabase = db,
 ): Promise<WorkoutSession[]> {
-  const sessions = await database.workoutSessions
+  return database.workoutSessions
+    .orderBy('startedAt')
+    .reverse()
     .filter((session) => session.deletedAt === null)
     .toArray()
-  return sessions.sort(
-    (left, right) =>
-      Date.parse(right.startedAt) - Date.parse(left.startedAt),
-  )
+}
+
+export async function listWorkoutSessionsPage(
+  options: ListWorkoutSessionsPageOptions = {},
+  database: GymTrackerDatabase = db,
+): Promise<WorkoutSession[]> {
+  const limit = options.limit ?? 20
+  const collection = options.cursorStartedAt
+    ? database.workoutSessions
+        .where('startedAt')
+        .below(options.cursorStartedAt)
+        .reverse()
+    : database.workoutSessions.orderBy('startedAt').reverse()
+
+  return collection
+    .filter((session) => session.deletedAt === null)
+    .limit(limit)
+    .toArray()
 }
 
 export async function updateWorkoutSession(

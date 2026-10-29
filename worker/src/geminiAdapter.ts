@@ -355,10 +355,12 @@ async function findAvailableModel(apiKey: string): Promise<{ apiVersion: 'v1' | 
       )
 
       const preferences = [
-        'gemini-flash-lite-latest',
-        'gemini-3.5-flash',
         'gemini-3.1-flash-lite',
+        'gemini-3-flash-preview',
+        'gemini-flash-lite-latest',
         'gemini-flash-latest',
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
         'gemini-2.0-flash-lite',
         'gemini-2.0-flash',
         'gemini-1.5-flash',
@@ -383,30 +385,98 @@ async function findAvailableModel(apiKey: string): Promise<{ apiVersion: 'v1' | 
   return null
 }
 
+export const WORKOUT_SCHEMA: Record<string, unknown> = {
+  type: 'OBJECT',
+  properties: {
+    sessionName: { type: 'STRING', nullable: true },
+    startTime: { type: 'STRING', nullable: true },
+    endTime: { type: 'STRING', nullable: true },
+    durationMinutes: { type: 'INTEGER', nullable: true },
+    workoutDate: { type: 'STRING', nullable: true },
+    exercises: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          exercise: { type: 'STRING' },
+          weight: { type: 'NUMBER', nullable: true },
+          unit: { type: 'STRING', enum: ['kg', 'lbs'], nullable: true },
+          reps: { type: 'INTEGER', nullable: true },
+          sets: { type: 'INTEGER', nullable: true },
+          durationSeconds: { type: 'INTEGER', nullable: true },
+          notes: { type: 'STRING', nullable: true },
+        },
+        required: ['exercise'],
+      },
+    },
+    confidence: { type: 'STRING', enum: ['high', 'low'] },
+    followUpQuestion: { type: 'STRING', nullable: true },
+  },
+  required: ['exercises', 'confidence'],
+}
+
+export const MEAL_SCHEMA: Record<string, unknown> = {
+  type: 'OBJECT',
+  properties: {
+    meals: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          mealName: { type: 'STRING' },
+          mealType: { type: 'STRING', enum: ['breakfast', 'lunch', 'dinner', 'snack'] },
+          servingDescription: { type: 'STRING' },
+          calories: { type: 'NUMBER' },
+          proteinG: { type: 'NUMBER' },
+          carbsG: { type: 'NUMBER' },
+          fatG: { type: 'NUMBER' },
+          notes: { type: 'STRING', nullable: true },
+        },
+        required: ['mealName', 'mealType', 'calories', 'proteinG', 'carbsG', 'fatG'],
+      },
+    },
+    confidence: { type: 'STRING', enum: ['high', 'low'] },
+    followUpQuestion: { type: 'STRING', nullable: true },
+  },
+  required: ['meals', 'confidence'],
+}
+
 export async function callGeminiRaw(
   apiKey: string,
   prompt: string,
   systemPrompt: string,
-  model?: string
+  model?: string,
+  schema?: Record<string, unknown>
 ): Promise<unknown> {
-  const tryModel = async (apiVersion: string, targetModel: string, useSystemInstruction = true): Promise<Response> => {
+  const sanitizedPrompt = `<user_input>\n${prompt.slice(0, 2000).replace(/<\/user_input>/gi, '')}\n</user_input>`
+
+  const tryModel = async (
+    apiVersion: string,
+    targetModel: string,
+    useSystemInstruction = true,
+    responseSchema?: Record<string, unknown>
+  ): Promise<Response> => {
     const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${encodeURIComponent(targetModel)}:generateContent?key=${encodeURIComponent(apiKey)}`
-    
+
+    const generationConfig: Record<string, unknown> = {
+      responseMimeType: 'application/json',
+      temperature: 0.1,
+      maxOutputTokens: 4000,
+    }
+
     const body: Record<string, unknown> = {
       contents: [
         {
           parts: [
             {
               text: useSystemInstruction
-                ? prompt
-                : `${systemPrompt}\n\nUser message:\n${prompt}`,
+                ? sanitizedPrompt
+                : `${systemPrompt}\n\nUser message:\n${sanitizedPrompt}`,
             },
           ],
         },
       ],
-      generationConfig: {
-        response_mime_type: 'application/json',
-      },
+      generationConfig,
     }
 
     if (useSystemInstruction) {
@@ -421,35 +491,36 @@ export async function callGeminiRaw(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(10000),
     })
   }
 
-  // Prioritize Flash models confirmed working with 200 OK on user's API key
+  // Prioritize active, fast Gemini models (3-flash-preview, 3.1-flash-lite, etc.)
   const initialCandidates: Array<{ apiVersion: 'v1' | 'v1beta'; model: string }> = model
     ? [{ apiVersion: 'v1beta', model }, { apiVersion: 'v1', model }]
     : [
-        { apiVersion: 'v1beta', model: 'gemini-flash-lite-latest' },
-        { apiVersion: 'v1beta', model: 'gemini-3.5-flash' },
+        { apiVersion: 'v1beta', model: 'gemini-3-flash-preview' },
         { apiVersion: 'v1beta', model: 'gemini-3.1-flash-lite' },
-        { apiVersion: 'v1beta', model: 'gemini-2.0-flash-lite' },
-        { apiVersion: 'v1beta', model: 'gemini-flash-latest' },
-        { apiVersion: 'v1beta', model: 'gemini-1.5-flash' },
+        { apiVersion: 'v1', model: 'gemini-3-flash-preview' },
+        { apiVersion: 'v1', model: 'gemini-3.1-flash-lite' },
+        { apiVersion: 'v1beta', model: 'gemini-2.0-flash' },
       ]
 
   let response: Response | null = null
 
   for (const candidate of initialCandidates) {
     try {
-      let res = await tryModel(candidate.apiVersion, candidate.model, true)
-      
-      // If 400 mentions systemInstruction not supported, retry without systemInstruction
+      let res = await tryModel(candidate.apiVersion, candidate.model, true, schema)
+
+      // If 400 occurs, test if schema or systemInstruction caused the rejection
       if (res.status === 400) {
         const cloned = res.clone()
         try {
           const errBody = await cloned.text()
-          if (errBody.includes('system_instruction') || errBody.includes('systemInstruction')) {
-            res = await tryModel(candidate.apiVersion, candidate.model, false)
+          if (errBody.includes('schema') || errBody.includes('response_schema')) {
+            res = await tryModel(candidate.apiVersion, candidate.model, true, undefined)
+          } else if (errBody.includes('system_instruction') || errBody.includes('systemInstruction')) {
+            res = await tryModel(candidate.apiVersion, candidate.model, false, undefined)
           }
         } catch {
           // keep original res
@@ -489,17 +560,17 @@ export async function callGeminiRaw(
     }
   }
 
-  // If all initial models failed with 404 or limit: 0, dynamically discover supported flash models via ListModels
+  // If initial models failed with 404 or limit: 0, dynamically discover supported flash models via ListModels
   if (!response || response.status === 404 || (response.status === 429 && response.statusText !== 'OK')) {
     const isZeroLimit = response ? await (async () => {
       try { return (await response!.clone().text()).includes('limit: 0') } catch { return false }
     })() : true
 
-    if (isZeroLimit) {
+    if (response?.status === 404 || isZeroLimit) {
       const discovered = await findAvailableModel(apiKey)
       if (discovered) {
         try {
-          const res = await tryModel(discovered.apiVersion, discovered.modelName, true)
+          const res = await tryModel(discovered.apiVersion, discovered.modelName, true, schema)
           if (res.ok) {
             response = res
           }
@@ -555,6 +626,8 @@ export async function callGeminiRaw(
       content?: {
         parts?: Array<{
           text?: string
+          thought?: boolean
+          thoughtSignature?: string
         }>
       }
     }>
@@ -567,20 +640,39 @@ export async function callGeminiRaw(
     throw new GeminiApiError('Failed to parse Gemini response as JSON', 'PROVIDER_ERROR', 502)
   }
 
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text
+  const parts = data.candidates?.[0]?.content?.parts || []
+  let rawText = ''
+  for (const part of parts) {
+    if (part.text && !part.thought && !part.thoughtSignature) {
+      rawText = part.text
+      break
+    }
+  }
+  if (!rawText && parts.length > 0 && parts[0].text) {
+    rawText = parts[0].text
+  }
+
   if (!rawText) {
     throw new GeminiApiError('Gemini returned an empty response', 'PROVIDER_ERROR', 502)
   }
 
+  let cleaned = rawText.trim()
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
+  }
+  cleaned = cleaned.trim()
+
   try {
-    return JSON.parse(rawText)
+    return JSON.parse(cleaned)
   } catch {
     throw new GeminiApiError('Gemini response was not valid JSON', 'PROVIDER_ERROR', 502)
   }
 }
 
 export async function callGemini(apiKey: string, prompt: string, model?: string): Promise<ParsedWorkout> {
-  const raw = await callGeminiRaw(apiKey, prompt, GEMINI_SYSTEM_PROMPT, model)
+  const raw = await callGeminiRaw(apiKey, prompt, GEMINI_SYSTEM_PROMPT, model, WORKOUT_SCHEMA)
   try {
     return validateParsedWorkout(raw)
   } catch (valErr: unknown) {
@@ -590,7 +682,7 @@ export async function callGemini(apiKey: string, prompt: string, model?: string)
 }
 
 export async function callGeminiMeal(apiKey: string, prompt: string, model?: string): Promise<ParsedMeal> {
-  const raw = await callGeminiRaw(apiKey, prompt, GEMINI_MEAL_SYSTEM_PROMPT, model)
+  const raw = await callGeminiRaw(apiKey, prompt, GEMINI_MEAL_SYSTEM_PROMPT, model, MEAL_SCHEMA)
   try {
     return validateParsedMeal(raw)
   } catch (valErr: unknown) {

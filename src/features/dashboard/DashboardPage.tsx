@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Activity, Apple, Bot, Dumbbell, RefreshCw } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Activity, Apple, ArrowRight, Bot, Dumbbell, Play, RefreshCw } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Button, Card, EmptyState } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
@@ -22,6 +22,7 @@ import type {
   ExerciseProgress,
 } from './analyticsService'
 import type { DailyNutritionTotals } from '../nutrition/types'
+import { startWorkoutThunk, loadActiveWorkoutThunk } from '../workouts/workoutThunks'
 
 const rangeOptions: Array<{ days: AnalyticsPeriod; label: string }> = [
   { days: 7, label: 'Last 7 days' },
@@ -63,6 +64,13 @@ function formatDelta(value: number, suffix = ''): string {
 
 function DashboardPage() {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const isHome = useLocation().pathname === '/'
+  const {
+    activeWorkoutId,
+    status: workoutStatus,
+    error: workoutError,
+  } = useAppSelector((state) => state.workoutUi)
   const {
     period,
     analytics,
@@ -82,6 +90,10 @@ function DashboardPage() {
   }, [dispatch, period])
 
   useEffect(() => {
+    void dispatch(loadActiveWorkoutThunk())
+  }, [dispatch])
+
+  useEffect(() => {
     if (exerciseId) void dispatch(loadExerciseProgressThunk(exerciseId))
   }, [dispatch, exerciseId])
 
@@ -95,34 +107,22 @@ function DashboardPage() {
 
   return (
     <PageContainer>
-      <header className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="min-w-0">
-          <p className="mb-2 text-sm font-medium text-accent">Your training and nutrition</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            Progress dashboard
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            {analytics
-              ? formatDate(analytics.period.endDate, { dateStyle: 'full' })
-              : 'Loading current date'}
-          </p>
-        </div>
-        <label className="flex min-h-11 flex-col gap-1 text-sm font-medium text-ink sm:min-w-44">
-          Analytics period
-          <select
-            aria-label="Analytics period"
-            value={period}
-            onChange={(event) => changePeriod(Number(event.currentTarget.value) as AnalyticsPeriod)}
-            className="min-h-11 rounded-lg border border-line bg-panel px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-          >
-            {rangeOptions.map((option) => (
-              <option key={option.days} value={option.days}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </header>
+      {!isHome && (
+        <header className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div className="min-w-0">
+            <p className="mb-2 text-sm font-medium text-accent">Training data</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              Progress
+            </h1>
+            <p className="mt-2 text-sm text-muted">
+              {analytics
+                ? formatDate(analytics.period.endDate, { dateStyle: 'full' })
+                : 'Loading current date'}
+            </p>
+          </div>
+          <AnalyticsPeriodSelect period={period} onChange={changePeriod} />
+        </header>
+      )}
 
       {status === 'failed' && (
         <div
@@ -159,10 +159,58 @@ function DashboardPage() {
           onRetryExercise={() => {
             if (exerciseId) void dispatch(loadExerciseProgressThunk(exerciseId))
           }}
+          activeWorkoutId={activeWorkoutId}
+          workoutStatus={workoutStatus}
+          workoutError={workoutError}
+          onStartWorkout={async () => {
+            if (activeWorkoutId) {
+              navigate('/workouts/active')
+              return
+            }
+            try {
+              await dispatch(startWorkoutThunk(undefined)).unwrap()
+              navigate('/workouts/active')
+            } catch {
+              // The rejected thunk provides the visible error through Redux state.
+            }
+          }}
+          isHome={isHome}
+          onChangePeriod={changePeriod}
           onActivityLogged={() => void dispatch(loadDashboardThunk(period))}
         />
       )}
     </PageContainer>
+  )
+}
+
+function AnalyticsPeriodSelect({
+  period,
+  onChange,
+}: {
+  period: AnalyticsPeriod
+  onChange: (period: AnalyticsPeriod) => void
+}) {
+  return (
+    <label className="flex min-h-11 flex-col gap-1 text-sm font-medium text-ink">
+      Range
+      <select
+        aria-label="Analytics period"
+        value={period}
+        onChange={(event) => {
+          const option = rangeOptions.find(
+            (item) => item.days === Number(event.currentTarget.value),
+          )
+          if (option) onChange(option.days)
+        }}
+        className="min-h-11 rounded-lg border border-line bg-panel px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+      >
+        {rangeOptions.map((option) => (
+          <option key={option.days} value={option.days}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
@@ -175,6 +223,12 @@ function DashboardContent({
   exerciseError,
   onChooseExercise,
   onRetryExercise,
+  activeWorkoutId,
+  workoutStatus,
+  workoutError,
+  onStartWorkout,
+  isHome,
+  onChangePeriod,
   onActivityLogged,
 }: {
   analytics: DashboardAnalytics
@@ -185,6 +239,12 @@ function DashboardContent({
   exerciseError: string | null
   onChooseExercise: (id: string) => void
   onRetryExercise: () => void
+  activeWorkoutId: string | null
+  workoutStatus: 'idle' | 'loading' | 'saving' | 'failed'
+  workoutError: string | null
+  onStartWorkout: () => Promise<void>
+  isHome: boolean
+  onChangePeriod: (period: AnalyticsPeriod) => void
   onActivityLogged: () => void
 }) {
   const [nutritionMetric, setNutritionMetric] =
@@ -192,9 +252,90 @@ function DashboardContent({
   const hasAnyHistory =
     analytics.workouts.count > 0 || analytics.nutrition.mealLogCount > 0
   const calorieAverageAvailable = analytics.nutrition.mealLogCount > 0
+  const week = useMemo(() => analytics.days.slice(-7), [analytics.days])
+  const weeklyWorkoutCount = week.reduce((total, day) => total + day.workoutCount, 0)
+  const weeklyTrainingDays = week.filter((day) => day.workoutCount > 0).length
+  const weeklyVolume = week.reduce((total, day) => total + day.trainingVolumeKg, 0)
 
   return (
     <div className="space-y-8">
+      <section aria-labelledby="today-title">
+        <div className="mb-5 flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+              Training log · {formatDate(analytics.period.endDate, { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+            <h1 id="today-title" className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              Today
+            </h1>
+          </div>
+          <Button
+            size="large"
+            icon={activeWorkoutId ? Play : Dumbbell}
+            loading={workoutStatus === 'saving'}
+            disabled={workoutStatus === 'loading'}
+            onClick={() => void onStartWorkout()}
+            className="w-full sm:w-auto"
+          >
+            {activeWorkoutId ? 'Resume workout' : 'Start workout'}
+          </Button>
+        </div>
+        {workoutError && (
+          <p role="alert" className="mb-4 text-sm text-danger">
+            {workoutError}
+          </p>
+        )}
+        {activeWorkoutId && (
+          <Link
+            to="/workouts/active"
+            className="mb-5 flex min-h-11 items-center justify-between border-b border-line py-3 text-sm text-ink hover:text-accent"
+          >
+            <span>Workout in progress</span>
+            <ArrowRight aria-hidden="true" size={17} />
+          </Link>
+        )}
+        <div className="grid grid-cols-3 divide-x divide-line border-b border-line py-4">
+          <WeeklyMetric label="Workouts" value={String(weeklyWorkoutCount)} />
+          <WeeklyMetric label="Training days" value={String(weeklyTrainingDays)} />
+          <WeeklyMetric label="Volume" value={`${formatMetric(weeklyVolume)} kg`} />
+        </div>
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink">Recent workouts</h2>
+            <Link
+              to="/workouts"
+              className="flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent"
+            >
+              History <ArrowRight aria-hidden="true" size={15} />
+            </Link>
+          </div>
+          {analytics.workouts.recent.length ? (
+            <ul className="divide-y divide-line border-y border-line">
+              {analytics.workouts.recent.slice(0, 3).map((workout) => (
+                <li key={workout.session.id}>
+                  <Link
+                    to={`/workouts/${workout.session.id}`}
+                    className="flex min-h-14 items-center justify-between gap-3 py-3 text-sm hover:text-accent"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-ink">{workout.session.name}</span>
+                      <span className="mt-1 block text-xs text-muted">
+                        {formatDate(formatTimestampAsLocalDate(workout.session.completedAt ?? workout.session.startedAt))}
+                        {' · '}{workout.exerciseCount} exercises · {workout.completedSetCount} sets
+                      </span>
+                    </span>
+                    <ArrowRight aria-hidden="true" className="shrink-0 text-muted" size={17} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="border-y border-line py-4 text-sm text-muted">
+              No completed workouts in this period yet.
+            </p>
+          )}
+        </div>
+      </section>
       <DashboardAiLogger onActivityLogged={onActivityLogged} />
 
       {!hasAnyHistory && (
@@ -230,12 +371,20 @@ function DashboardContent({
               {formatDate(analytics.period.startDate)} – {formatDate(analytics.period.endDate)} · today included
             </p>
           </div>
-          <Link
-            to="/workouts"
-            className="min-h-10 rounded-md px-2 py-2 text-sm font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            Workout history
-          </Link>
+          <div className="flex items-center gap-2">
+            {isHome && (
+              <AnalyticsPeriodSelect
+                period={analytics.period.days}
+                onChange={onChangePeriod}
+              />
+            )}
+            <Link
+              to="/workouts"
+              className="min-h-10 rounded-md px-2 py-2 text-sm font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              Workout history
+            </Link>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <StatCard
@@ -544,6 +693,15 @@ function DashboardContent({
           </Card>
         )}
       </section>
+    </div>
+  )
+}
+
+function WeeklyMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-3 first:pl-0 last:pr-0 sm:px-5">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-ink">{value}</p>
     </div>
   )
 }

@@ -3,7 +3,8 @@ import { Plus, Search } from 'lucide-react'
 import type { FormEvent } from 'react'
 import type { Exercise, ExerciseCategory } from '../types'
 import { findExercises } from '../workoutService'
-import { Button, Input, Modal } from '../../../components/common'
+import { Button, Input } from '../../../components/common'
+import Sheet from '../../../components/common/Sheet'
 
 type ExercisePickerModalProps = {
   open: boolean
@@ -45,18 +46,13 @@ function ExercisePickerModal({
 }: ExercisePickerModalProps) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<ExerciseCategory>('other')
-  const [filterCategory, setFilterCategory] = useState<
-    ExerciseCategory | 'all'
-  >('all')
+  const [filterCategory, setFilterCategory] = useState<ExerciseCategory | 'all'>('all')
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const existingIds = useMemo(
-    () => new Set(existingExerciseIds),
-    [existingExerciseIds],
-  )
+  const existingIds = useMemo(() => new Set(existingExerciseIds), [existingExerciseIds])
   const visibleExercises = exercises.filter(
     (exercise) =>
       filterCategory === 'all' || exercise.category === filterCategory,
@@ -135,11 +131,12 @@ function ExercisePickerModal({
   }
 
   return (
-    <Modal
+    <Sheet
       open={open}
       onClose={onClose}
       closeBlocked={creating || addingId !== null}
       title="Add an exercise"
+      variant="adaptive"
     >
       <div className="space-y-5">
         <Input
@@ -161,7 +158,7 @@ function ExercisePickerModal({
                 setFilterCategory(value)
               }
             }}
-            className="min-h-10 rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+            className="min-h-10 rounded-xl border border-line bg-panel px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
           >
             <option value="all">All categories</option>
             {categories.map((item) => (
@@ -171,23 +168,27 @@ function ExercisePickerModal({
             ))}
           </select>
         </label>
+
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
             {error}
           </p>
         )}
+
         {loading ? (
           <p className="py-4 text-center text-sm text-muted">
             Loading exercises…
           </p>
         ) : visibleExercises.length ? (
-          <ul className="max-h-52 divide-y divide-line overflow-y-auto rounded-xl border border-line">
+          <ul className="max-h-56 divide-y divide-line overflow-y-auto rounded-2xl border border-line">
             {visibleExercises.map((exercise) => {
               const alreadyAdded = existingIds.has(exercise.id)
               return (
                 <li
                   key={exercise.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5"
+                  className={`flex items-center justify-between gap-3 px-4 py-3 transition-colors ${
+                    alreadyAdded ? 'opacity-50' : 'hover:bg-hover'
+                  }`}
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-ink">
@@ -200,8 +201,8 @@ function ExercisePickerModal({
                   </div>
                   <Button
                     size="small"
-                    variant="outline"
-                    icon={Plus}
+                    variant={alreadyAdded ? 'ghost' : 'outline'}
+                    icon={alreadyAdded ? undefined : Plus}
                     disabled={alreadyAdded || addingId !== null}
                     loading={addingId === exercise.id}
                     onClick={() => void addExercise(exercise)}
@@ -213,7 +214,7 @@ function ExercisePickerModal({
             })}
           </ul>
         ) : (
-          <div className="rounded-xl bg-surface px-4 py-5 text-center">
+          <div className="rounded-2xl bg-surface px-4 py-6 text-center">
             <Search aria-hidden="true" className="mx-auto text-muted" size={20} />
             <p className="mt-2 text-sm font-medium text-ink">
               No matching exercises
@@ -223,6 +224,7 @@ function ExercisePickerModal({
             </p>
           </div>
         )}
+
         <form
           onSubmit={(event) => void createExercise(event)}
           className="space-y-3 border-t border-line pt-5"
@@ -244,7 +246,7 @@ function ExercisePickerModal({
                   const value = event.currentTarget.value
                   if (isExerciseCategory(value)) setCategory(value)
                 }}
-                className="min-h-10 rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                className="min-h-10 rounded-xl border border-line bg-panel px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               >
                 {categories.map((item) => (
                   <option value={item} key={item}>
@@ -265,7 +267,7 @@ function ExercisePickerModal({
           </Button>
         </form>
       </div>
-    </Modal>
+    </Sheet>
   )
 }
 

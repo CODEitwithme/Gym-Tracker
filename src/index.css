@@ -1,30 +1,121 @@
 @import "tailwindcss";
 
 @theme {
-  --color-surface: #0d0f0e;
-  --color-panel: #171a18;
-  --color-line: #2a302b;
-  --color-ink: #f5f7f2;
-  --color-muted: #a3aaa2;
-  --color-hover: #222723;
-  --color-accent: #c6f36b;
-  --color-accent-hover: #b1e451;
-  --color-accent-soft: #26331a;
+  --color-surface: var(--theme-background);
+  --color-panel: var(--theme-surface);
+  --color-line: var(--theme-border);
+  --color-ink: var(--theme-text);
+  --color-muted: var(--theme-muted);
+  --color-hover: var(--theme-secondary-surface);
+  --color-accent: var(--theme-accent);
+  --color-accent-hover: var(--theme-accent-hover);
+  --color-accent-soft: var(--theme-accent-soft);
+  --color-danger: var(--theme-danger);
+  --color-danger-soft: var(--theme-danger-soft);
+  --color-danger-fill: var(--theme-danger-fill);
+  --color-danger-hover: var(--theme-danger-hover);
+  --color-success: var(--theme-success);
+  --color-success-soft: var(--theme-success-soft);
+  --color-warning: var(--theme-warning);
+  --color-warning-soft: var(--theme-warning-soft);
+  --color-info: var(--theme-info);
+  --color-info-soft: var(--theme-info-soft);
+  --color-red-50: var(--theme-danger-soft);
+  --color-red-100: var(--theme-danger-soft);
+  --color-red-200: var(--theme-danger-soft);
+  --color-red-500: var(--theme-danger);
+  --color-red-600: var(--theme-danger-fill);
+  --color-red-700: var(--theme-danger-hover);
+  --color-red-800: var(--theme-danger);
+  --color-sky-50: var(--theme-info-soft);
+  --color-sky-600: var(--theme-info);
+  --color-sky-700: var(--theme-info);
+  --color-emerald-50: var(--theme-success-soft);
+  --color-emerald-200: var(--theme-success-soft);
+  --color-emerald-700: var(--theme-success);
+  --color-amber-50: var(--theme-warning-soft);
+  --color-amber-200: var(--theme-warning-soft);
+  --color-amber-800: var(--theme-warning);
 }
 
 :root {
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  color: var(--color-ink);
-  background: var(--color-surface);
-  color-scheme: dark;
   font-optical-sizing: auto;
+
+  color-scheme: light;
+  --theme-background: #f7f6f2;
+  --theme-surface: #ffffff;
+  --theme-secondary-surface: #efeee9;
+  --theme-text: #171717;
+  --theme-muted: #696969;
+  --theme-border: #dad9d3;
+  --theme-accent: #e52222;
+  --theme-accent-hover: #c91e1e;
+  --theme-accent-soft: #fbe4e2;
+  --theme-danger: #b42318;
+  --theme-danger-soft: #fef0ee;
+  --theme-danger-fill: #b42318;
+  --theme-danger-hover: #8f1d15;
+  --theme-success: #16794b;
+  --theme-success-soft: #e7f4ec;
+  --theme-warning: #855b00;
+  --theme-warning-soft: #f7eed4;
+  --theme-info: #175b85;
+  --theme-info-soft: #e8f2f8;
+
+  /* Elevation shadows (light) */
+  --shadow-card:
+    0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-float:
+    0 4px 20px -2px rgb(0 0 0 / 0.1), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+  --shadow-sheet:
+    0 -2px 24px -4px rgb(0 0 0 / 0.1), 0 -1px 6px -1px rgb(0 0 0 / 0.06);
+  --shadow-modal:
+    0 20px 60px -8px rgb(0 0 0 / 0.18), 0 8px 20px -4px rgb(0 0 0 / 0.12);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --theme-background: #121212;
+  --theme-surface: #1a1a1a;
+  --theme-secondary-surface: #222222;
+  --theme-text: #f4f4f4;
+  --theme-muted: #a0a0a0;
+  --theme-border: #333333;
+  --theme-accent: #ff3030;
+  --theme-accent-hover: #e62828;
+  --theme-accent-soft: #3a2020;
+  --theme-danger: #ff7770;
+  --theme-danger-soft: #3a2020;
+  --theme-danger-fill: #a6322b;
+  --theme-danger-hover: #862720;
+  --theme-success: #79d99b;
+  --theme-success-soft: #1c3325;
+  --theme-warning: #f0c36b;
+  --theme-warning-soft: #382f1d;
+  --theme-info: #8bc9ed;
+  --theme-info-soft: #1e303c;
+
+  /* Elevation shadows (dark) */
+  --shadow-card:
+    0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px -1px rgb(0 0 0 / 0.18);
+  --shadow-float:
+    0 4px 20px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.28);
+  --shadow-sheet:
+    0 -2px 24px -4px rgb(0 0 0 / 0.45), 0 -1px 6px -1px rgb(0 0 0 / 0.3);
+  --shadow-modal:
+    0 20px 60px -8px rgb(0 0 0 / 0.55), 0 8px 20px -4px rgb(0 0 0 / 0.4);
 }
 
 * {
@@ -32,6 +123,7 @@
 }
 
 html {
+  min-width: 320px;
   scroll-behavior: smooth;
 }
 
@@ -39,7 +131,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: var(--color-surface);
+  background: var(--theme-background);
+  color: var(--theme-text);
 }
 
 button,
@@ -48,13 +141,131 @@ a {
 }
 
 ::selection {
-  color: #0d0f0e;
-  background: #c6f36b;
+  color: var(--theme-background);
+  background: var(--theme-accent);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--theme-accent);
   outline-offset: 3px;
+}
+
+/* ── Sheet animations ─────────────────────────────────────────── */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheet-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-out-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes set-complete {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.94);
+  }
+  70% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-sheet-in {
+  animation: sheet-in 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-sheet-out {
+  animation: sheet-out 200ms ease-in forwards;
+}
+.animate-sheet-in-right {
+  animation: sheet-in-right 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-sheet-out-right {
+  animation: sheet-out-right 200ms ease-in forwards;
+}
+.animate-backdrop-in {
+  animation: backdrop-in 200ms ease-out forwards;
+}
+.animate-backdrop-out {
+  animation: backdrop-out 200ms ease-in forwards;
+}
+.animate-set-complete {
+  animation: set-complete 240ms ease-out forwards;
+}
+.animate-toast-in {
+  animation: toast-in 200ms ease-out forwards;
+}
+
+/* ── Safe-area padding helpers ────────────────────────────────── */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pb-safe-4 {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+.mb-nav {
+  /* reserve space below floating bottom nav on mobile */
+  margin-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
 @media (prefers-reduced-motion: reduce) {

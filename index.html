@@ -7,8 +7,28 @@
       name="description"
       content="Train with purpose. Track your real progress. Build your stronger self with Forge Fit."
     />
-    <meta name="theme-color" content="#0d0f0e" />
-    <title>Forge Fit — Build Your Stronger Self</title>
+    <meta name="theme-color" content="#f7f6f2" />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("gym-tracker-theme");
+        const systemPrefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        document.documentElement.dataset.theme =
+          savedTheme === "light" || savedTheme === "dark"
+            ? savedTheme
+            : systemPrefersDark
+              ? "dark"
+              : "light";
+      } catch {
+        document.documentElement.dataset.theme = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches
+          ? "dark"
+          : "light";
+      }
+    </script>
+    <title>Forge / Fit — Training log</title>
   </head>
   <body>
     <div id="root"></div>

@@ -33,7 +33,7 @@ function Input({
       <label htmlFor={inputId} className="text-sm font-medium text-ink">
         {label}
         {required && (
-          <span aria-hidden="true" className="ml-1 text-red-600">
+          <span aria-hidden="true" className="ml-1 text-danger">
             *
           </span>
         )}

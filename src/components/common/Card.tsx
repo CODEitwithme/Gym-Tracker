@@ -20,8 +20,9 @@ function Card({
   return (
     <div
       {...props}
+      style={{ boxShadow: 'var(--shadow-card)', ...((props as { style?: React.CSSProperties }).style ?? {}) }}
       className={[
-        'rounded-2xl border border-line bg-panel shadow-sm shadow-ink/[0.02]',
+        'rounded-2xl border border-line bg-panel',
         className,
       ].join(' ')}
     >

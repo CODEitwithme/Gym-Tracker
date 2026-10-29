@@ -14,10 +14,10 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 
 const variantClasses: Record<BadgeVariant, string> = {
   default: 'bg-hover text-muted',
-  success: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
-  warning: 'bg-amber-50 text-amber-800 ring-amber-600/20',
-  danger: 'bg-red-50 text-red-700 ring-red-600/15',
-  info: 'bg-sky-50 text-sky-700 ring-sky-600/15',
+  success: 'bg-success-soft text-success ring-success/15',
+  warning: 'bg-warning-soft text-warning ring-warning/20',
+  danger: 'bg-danger-soft text-danger ring-danger/15',
+  info: 'bg-info-soft text-info ring-info/15',
 }
 
 function Badge({

@@ -12,6 +12,8 @@ It does not require an account or a backend.
   backend, or cross-device synchronization.
 - The demo feature stores only its record-ID and snapshot manifest in browser
   local storage so its cleanup action can identify its own records.
+- The light/dark theme choice is stored in browser local storage. On a first
+  visit without a saved choice, the app follows the device color preference.
 - Clearing browser/site data can erase records. Browser storage may also be
   evicted, and is not a guaranteed permanent backup.
 - Private browsing sessions and different browsers or devices may not share

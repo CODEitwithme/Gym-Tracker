@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
-import { Check, Clock3, Plus } from 'lucide-react'
+import { Check, Clock3, Flag, Plus, RotateCcw } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState, Input, Modal } from '../../components/common'
+import Sheet from '../../components/common/Sheet'
 import PageContainer from '../../components/layout/PageContainer'
 import type { Exercise, ExerciseSet } from './types'
 import ExercisePickerModal from './components/ExercisePickerModal'
@@ -331,7 +332,7 @@ function ActiveWorkoutPage() {
   if (!details) {
     return (
       <PageContainer>
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+        <div role="alert" className="rounded-2xl border border-danger-soft bg-danger-soft p-5 text-sm text-danger">
           <p>{error ?? reduxError ?? 'Could not load the active workout.'}</p>
           <Button className="mt-3" variant="outline" onClick={() => navigate('/workouts')}>
             Back to workouts
@@ -341,17 +342,26 @@ function ActiveWorkoutPage() {
     )
   }
 
+  const hasPendingChanges = nameDirty || notesDirty || pendingEdits.length > 0
+
   return (
     <PageContainer>
-      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+      {/* ── Workout header ──────────────────────────────── */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex-1">
-          <div className="mb-3 flex items-center gap-2">
+          {/* Status + timer row */}
+          <div className="mb-3 flex items-center gap-2.5">
             <Badge variant="success">In progress</Badge>
             <span className="inline-flex items-center gap-1.5 text-sm tabular-nums text-muted">
-              <Clock3 aria-hidden="true" size={16} />
+              <Clock3 aria-hidden="true" size={15} />
               <time>{formatElapsed(details.session.startedAt, now)}</time>
             </span>
+            {saving && (
+              <span className="text-xs text-muted animate-pulse">Saving…</span>
+            )}
           </div>
+
+          {/* Workout name */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <Input
               label="Workout name"
@@ -361,17 +371,21 @@ function ActiveWorkoutPage() {
                 setName(event.currentTarget.value)
                 setNameDirty(true)
               }}
-              wrapperClassName="max-w-lg"
+              wrapperClassName="max-w-sm"
             />
             {nameDirty && (
-              <Button variant="secondary" disabled={saving} onClick={() => void saveName()}>
+              <Button variant="secondary" size="small" disabled={saving} onClick={() => void saveName()}>
                 Save name
               </Button>
             )}
           </div>
         </div>
+
+        {/* Finish button */}
         <Button
+          size="large"
           variant="outline"
+          icon={Flag}
           disabled={saving}
           onClick={() => setFinishOpen(true)}
         >
@@ -379,15 +393,17 @@ function ActiveWorkoutPage() {
         </Button>
       </div>
 
+      {/* ── Inline alerts ───────────────────────────────── */}
       {error && (
         <div
           role="alert"
-          className="mb-5 flex flex-col justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center"
+          className="mb-5 flex flex-col justify-between gap-3 rounded-2xl border border-danger-soft bg-danger-soft p-4 text-sm text-danger sm:flex-row sm:items-center"
         >
           <p>{error}</p>
           <Button
             size="small"
             variant="outline"
+            icon={RotateCcw}
             onClick={() => {
               setError(null)
               void refresh(details.session.id).catch((retryError: unknown) =>
@@ -399,16 +415,18 @@ function ActiveWorkoutPage() {
               )
             }}
           >
-            Retry load
+            Retry
           </Button>
         </div>
       )}
+
       {savedMessage && (
-        <p role="status" className="mb-4 text-sm text-emerald-700">
+        <p role="status" className="mb-4 animate-toast-in text-sm text-success">
           {savedMessage}
         </p>
       )}
 
+      {/* ── Workout notes ───────────────────────────────── */}
       <Card
         className="mb-6"
         title="Workout notes"
@@ -423,7 +441,7 @@ function ActiveWorkoutPage() {
             setNotes(event.currentTarget.value)
             setNotesDirty(true)
           }}
-          className="w-full resize-y rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+          className="w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
         />
         {notesDirty && (
           <div className="mt-3 flex justify-end">
@@ -434,6 +452,7 @@ function ActiveWorkoutPage() {
         )}
       </Card>
 
+      {/* ── Exercise list ───────────────────────────────── */}
       <section aria-labelledby="exercise-list-title">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -455,6 +474,7 @@ function ActiveWorkoutPage() {
             Add Exercise
           </Button>
         </div>
+
         {details.exercises.length === 0 ? (
           <Card>
             <EmptyState
@@ -503,6 +523,7 @@ function ActiveWorkoutPage() {
         )}
       </section>
 
+      {/* ── Exercise picker sheet ───────────────────────── */}
       <ExercisePickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
@@ -512,7 +533,9 @@ function ActiveWorkoutPage() {
         onAdd={addExercise}
         onCreateAndAdd={createAndAddExercise}
       />
-      <Modal
+
+      {/* ── Finish workout sheet ─────────────────────────── */}
+      <Sheet
         open={finishOpen}
         onClose={() => setFinishOpen(false)}
         closeBlocked={saving}
@@ -529,7 +552,7 @@ function ActiveWorkoutPage() {
             <Button
               icon={Check}
               loading={saving}
-              disabled={nameDirty || notesDirty || pendingEdits.length > 0}
+              disabled={hasPendingChanges}
               onClick={() => void finish()}
             >
               Finish workout
@@ -541,12 +564,12 @@ function ActiveWorkoutPage() {
           <p className="text-sm text-muted">
             The workout will be saved to your history. Incomplete sets are allowed.
           </p>
-          {(nameDirty || notesDirty || pendingEdits.length > 0) && (
-            <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          {hasPendingChanges && (
+            <p role="alert" className="rounded-xl bg-warning-soft p-3 text-sm text-warning">
               Save your pending name, notes, or set edits before finishing.
             </p>
           )}
-          <dl className="divide-y divide-line rounded-xl border border-line">
+          <dl className="divide-y divide-line rounded-2xl border border-line">
             <SummaryRow label="Workout" value={name || details.session.name} />
             <SummaryRow
               label="Exercises"
@@ -556,7 +579,9 @@ function ActiveWorkoutPage() {
             <SummaryRow label="Total sets" value={String(totals.totalSets)} />
           </dl>
         </div>
-      </Modal>
+      </Sheet>
+
+      {/* ── Unsaved changes blocker — keep as Modal (it's a navigation blocker) */}
       <Modal
         open={blocker.state === 'blocked'}
         onClose={keepEditing}
@@ -583,7 +608,7 @@ function ActiveWorkoutPage() {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3 px-3 py-2.5 text-sm">
+    <div className="flex justify-between gap-3 px-4 py-2.5 text-sm">
       <dt className="text-muted">{label}</dt>
       <dd className="font-medium text-ink">{value}</dd>
     </div>

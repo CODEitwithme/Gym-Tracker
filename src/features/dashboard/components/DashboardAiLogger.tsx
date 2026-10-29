@@ -47,9 +47,10 @@ const NUTRITION_EXAMPLES = [
 
 interface DashboardAiLoggerProps {
   onActivityLogged?: () => void
+  isDrawer?: boolean
 }
 
-export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) {
+export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLoggerProps) {
   const [mode, setMode] = useState<AiLoggerMode>('workout')
   const [inputText, setInputText] = useState('')
   const [parsing, setParsing] = useState(false)
@@ -186,19 +187,25 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
     textareaRef.current?.focus()
   }
 
+  const Container = isDrawer ? 'div' : Card
+
   return (
-    <Card className="border-accent/30 bg-gradient-to-b from-panel to-panel/80 shadow-sm">
+    <Container className={isDrawer ? 'space-y-4' : 'border-accent/30 bg-gradient-to-b from-panel to-panel/80 shadow-sm'}>
       {/* Header bar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+      <div className={`flex flex-wrap items-center justify-between gap-3 ${isDrawer ? 'pb-2' : 'mb-4 border-b border-line pb-4'}`}>
         <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-fg shadow-sm">
-            <Bot size={20} aria-hidden="true" />
-          </span>
+          {!isDrawer && (
+            <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-fg shadow-sm">
+              <Bot size={20} aria-hidden="true" />
+            </span>
+          )}
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold tracking-tight text-ink">
-                AI Quick Logger
-              </h2>
+              {!isDrawer && (
+                <h2 className="text-lg font-semibold tracking-tight text-ink">
+                  AI Quick Logger
+                </h2>
+              )}
               {loadingStatus ? (
                 <Badge variant="default">Checking AI…</Badge>
               ) : workerUnavailable ? (
@@ -214,9 +221,11 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
                 </Link>
               )}
             </div>
-            <p className="text-xs text-muted">
-              Log workouts or meals in plain English using Gemini AI.
-            </p>
+            {!isDrawer && (
+              <p className="text-xs text-muted">
+                Log workouts or meals in plain English using Gemini AI.
+              </p>
+            )}
           </div>
         </div>
 
@@ -496,7 +505,7 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
           />
         </div>
       )}
-    </Card>
+    </Container>
   )
 }
 

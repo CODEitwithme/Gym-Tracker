@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
-import { Check, Clock3, Flag, Plus, RotateCcw } from 'lucide-react'
+import { Check, Clock3, Flag, Plus, RotateCcw, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState, Input, Modal } from '../../components/common'
@@ -8,6 +8,7 @@ import Sheet from '../../components/common/Sheet'
 import PageContainer from '../../components/layout/PageContainer'
 import type { Exercise, ExerciseSet } from './types'
 import ExercisePickerModal from './components/ExercisePickerModal'
+import AiActiveWorkoutModal from './components/AiActiveWorkoutModal'
 import WorkoutExerciseCard from './components/WorkoutExerciseCard'
 import { springSmooth, listItemVariants } from '../../lib/motion'
 import {
@@ -62,6 +63,7 @@ function ActiveWorkoutPage() {
   const [nameDirty, setNameDirty] = useState(false)
   const [notesDirty, setNotesDirty] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [aiModalOpen, setAiModalOpen] = useState(false)
   const [finishOpen, setFinishOpen] = useState(false)
   const [now, setNow] = useState(0)
   const hasUnsavedChanges =
@@ -499,14 +501,25 @@ function ActiveWorkoutPage() {
               {totals.totalSets} sets completed
             </p>
           </div>
-          <Button
-            size="large"
-            icon={Plus}
-            disabled={saving}
-            onClick={() => setPickerOpen(true)}
-          >
-            Add Exercise
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="large"
+              variant="outline"
+              icon={Sparkles}
+              disabled={saving}
+              onClick={() => setAiModalOpen(true)}
+            >
+              AI Quick Add
+            </Button>
+            <Button
+              size="large"
+              icon={Plus}
+              disabled={saving}
+              onClick={() => setPickerOpen(true)}
+            >
+              Add Exercise
+            </Button>
+          </div>
         </div>
 
         {details.exercises.length === 0 ? (
@@ -516,9 +529,18 @@ function ActiveWorkoutPage() {
               title="Add your first exercise"
               description="Search the exercise library or create a custom exercise for this session."
               action={
-                <Button onClick={() => setPickerOpen(true)}>
-                  Add Exercise
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    icon={Sparkles}
+                    onClick={() => setAiModalOpen(true)}
+                  >
+                    AI Quick Add
+                  </Button>
+                  <Button onClick={() => setPickerOpen(true)}>
+                    Add Exercise
+                  </Button>
+                </div>
               }
             />
           </Card>
@@ -577,6 +599,17 @@ function ActiveWorkoutPage() {
         )}
         onAdd={addExercise}
         onCreateAndAdd={createAndAddExercise}
+      />
+
+      {/* ── AI Quick Add Modal ────────────────────────────── */}
+      <AiActiveWorkoutModal
+        open={aiModalOpen}
+        workoutId={details.session.id}
+        onClose={() => setAiModalOpen(false)}
+        onSuccess={async (msg) => {
+          await refresh(details.session.id)
+          if (msg) setSavedMessage(msg)
+        }}
       />
 
       {/* ── Finish workout sheet ─────────────────────────── */}

@@ -1,9 +1,15 @@
 import type { MealType, ParsedExerciseItem, ParsedMeal, ParsedMealItem, ParsedWorkout } from './types'
 
-export const GEMINI_SYSTEM_PROMPT = `You are a workout data extraction assistant. Extract ALL exercises performed from the user's natural language message. A message may contain ONE or MULTIPLE exercises (e.g. "Bench press 80kg 3x8, Incline DB press 24kg 3x10").
+export const GEMINI_SYSTEM_PROMPT = `You are a workout data extraction assistant. Extract ALL exercises performed, along with any mentioned workout title (e.g. "Chest Day", "Legs", "Push"), workout date (e.g. "today", "yesterday"), and start/end times or duration (e.g. "5:30 to 6:45 PM", "1 hour") from the user's natural language message.
+A message may contain ONE or MULTIPLE exercises (e.g. "Trained today 6 to 7:15 pm. Bench press 80kg 3x8, Incline DB press 24kg 3x10").
 
 Return ONLY valid JSON matching this schema (no markdown, no explanation):
 {
+  "sessionName": string or null,
+  "startTime": string or null,
+  "endTime": string or null,
+  "durationMinutes": positive integer or null,
+  "workoutDate": string or null,
   "exercises": [
     {
       "exercise": string (exercise name, title-cased),
@@ -176,7 +182,7 @@ export function validateParsedWorkout(raw: unknown): ParsedWorkout {
 
   const primary = exercises[0]
 
-  return {
+  const result: ParsedWorkout = {
     exercises,
     exercise: primary.exercise,
     weight: primary.weight,
@@ -188,6 +194,28 @@ export function validateParsedWorkout(raw: unknown): ParsedWorkout {
     confidence: r.confidence,
     followUpQuestion,
   }
+
+  if (typeof r.sessionName === 'string' && r.sessionName.trim()) {
+    result.sessionName = r.sessionName.trim()
+  }
+  if (typeof r.startTime === 'string' && r.startTime.trim()) {
+    result.startTime = r.startTime.trim()
+  }
+  if (typeof r.endTime === 'string' && r.endTime.trim()) {
+    result.endTime = r.endTime.trim()
+  }
+  if (
+    typeof r.durationMinutes === 'number' &&
+    Number.isFinite(r.durationMinutes) &&
+    r.durationMinutes > 0
+  ) {
+    result.durationMinutes = Math.round(r.durationMinutes)
+  }
+  if (typeof r.workoutDate === 'string' && r.workoutDate.trim()) {
+    result.workoutDate = r.workoutDate.trim()
+  }
+
+  return result
 }
 
 function validateMealItem(r: unknown): ParsedMealItem {

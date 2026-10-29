@@ -103,6 +103,7 @@ function NutritionPage() {
   )
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false)
   const [logModalOpen, setLogModalOpen] = useState(false)
+  const [logModalTab, setLogModalTab] = useState<'ai' | 'library'>('library')
   const [logMealType, setLogMealType] = useState<MealType>('breakfast')
   const [editingLog, setEditingLog] = useState<MealLog | null>(null)
   const [logToDelete, setLogToDelete] = useState<MealLog | null>(null)
@@ -191,11 +192,16 @@ function NutritionPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link to="/ai-logger?mode=nutrition">
-            <Button variant="outline" icon={Sparkles}>
-              Log with AI
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            icon={Sparkles}
+            onClick={() => {
+              setLogModalTab('ai')
+              setLogModalOpen(true)
+            }}
+          >
+            Log with AI
+          </Button>
           <Link to="/nutrition/meals">
             <Button variant="outline" icon={Utensils}>
               Saved meals
@@ -205,6 +211,7 @@ function NutritionPage() {
             icon={Plus}
             onClick={() => {
               setLogMealType('breakfast')
+              setLogModalTab('library')
               setLogModalOpen(true)
             }}
           >
@@ -391,6 +398,7 @@ function NutritionPage() {
                   icon={Plus}
                   onClick={() => {
                     setLogMealType(type)
+                    setLogModalTab('library')
                     setLogModalOpen(true)
                   }}
                 >
@@ -409,6 +417,7 @@ function NutritionPage() {
                       icon={Plus}
                       onClick={() => {
                         setLogMealType(type)
+                        setLogModalTab('library')
                         setLogModalOpen(true)
                       }}
                     >
@@ -475,11 +484,15 @@ function NutritionPage() {
         onClose={() => setLogModalOpen(false)}
         initialDate={selectedDate}
         initialMealType={logMealType}
+        initialTab={logModalTab}
         onLogMeal={async (input) => {
           await logMeal(input)
           await loadData(selectedDate)
         }}
         onCreateSavedMeal={createMeal}
+        onLogAiSuccess={async () => {
+          await loadData(selectedDate)
+        }}
       />
 
       <EditMealLogModal

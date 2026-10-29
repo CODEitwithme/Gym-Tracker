@@ -47,6 +47,7 @@ export interface WorkoutSummary {
   setCount: number
   completedSetCount: number
   durationSeconds: number | null
+  totalVolumeKg: number
 }
 
 export interface PreviousPerformance {
@@ -118,11 +119,17 @@ export async function listCompletedWorkoutSummaries(
       )
       const sets = setsByExercise.flat()
       const completedAt = session.completedAt
+      const completedSets = sets.filter((set) => set.completed)
+      const totalVolumeKg = completedSets.reduce(
+        (sum, s) => sum + (s.weightKg * s.reps),
+        0,
+      )
       return {
         session,
         exerciseCount: exercises.length,
         setCount: sets.length,
-        completedSetCount: sets.filter((set) => set.completed).length,
+        completedSetCount: completedSets.length,
+        totalVolumeKg: Math.round(totalVolumeKg * 10) / 10,
         durationSeconds:
           completedAt === null
             ? null

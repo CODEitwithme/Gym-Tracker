@@ -1,5 +1,9 @@
-import { createUUID } from '../../lib/dateTime'
-import { softDeleteWorkoutSession } from '../../db/repositories/workoutSessions'
+import { createTimestamp, createUUID } from '../../lib/dateTime'
+import {
+  createWorkoutSession,
+  softDeleteWorkoutSession,
+  updateWorkoutSession,
+} from '../../db/repositories/workoutSessions'
 import { createAiWorkoutLog } from '../../db/repositories/aiWorkoutLogs'
 import {
   addExerciseToWorkout,
@@ -8,7 +12,6 @@ import {
   findExercises,
   finishWorkout,
   saveWorkoutNotes,
-  startWorkout,
 } from '../workouts/workoutService'
 import type { WorkoutSession } from '../workouts/types'
 import { createMeal, fetchSavedMeals, logMeal } from '../nutrition/nutritionService'
@@ -226,7 +229,14 @@ export async function saveAiWorkout(
 
   let session: WorkoutSession | null = null
   try {
-    session = await startWorkout(confirmed.sessionName || 'AI Workout')
+    const startedAt = confirmed.startedAt || createTimestamp()
+    session = await createWorkoutSession({
+      name: confirmed.sessionName || 'AI Workout',
+      startedAt,
+      completedAt: null,
+      status: 'in_progress',
+      notes: '',
+    })
 
     const combinedNotes =
       confirmed.notes ||
@@ -274,7 +284,13 @@ export async function saveAiWorkout(
       }
     }
 
-    const completedSession = await finishWorkout(session.id)
+    let completedSession = await finishWorkout(session.id)
+    if (confirmed.startedAt || confirmed.completedAt) {
+      completedSession = await updateWorkoutSession(completedSession.id, {
+        ...(confirmed.startedAt ? { startedAt: confirmed.startedAt } : {}),
+        ...(confirmed.completedAt ? { completedAt: confirmed.completedAt } : {}),
+      })
+    }
 
     try {
       await createAiWorkoutLog({

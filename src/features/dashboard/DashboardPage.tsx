@@ -1,34 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Activity, Apple, ArrowRight, Bot, Dumbbell, Play, RefreshCw } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  Apple,
+  ArrowRight,
+  Check,
+  ChevronRight,
+  Dumbbell,
+  Play,
+  Plus,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
-import { Button, Card, EmptyState } from '../../components/common'
+import { Badge, Button, Card } from '../../components/common'
+import { Sheet } from '../../components/common/Sheet'
 import PageContainer from '../../components/layout/PageContainer'
 import DashboardAiLogger from './components/DashboardAiLogger'
-import {
-  getSavedNutritionGoals,
-} from '../nutrition/nutritionService'
+import { getSavedNutritionGoals } from '../nutrition/nutritionService'
 import type { DailyNutritionGoals } from '../nutrition/types'
-import {
-  loadDashboardThunk,
-  loadExerciseProgressThunk,
-  setDashboardExercise,
-  setDashboardPeriod,
-} from './dashboardSlice'
-import type {
-  AnalyticsPeriod,
-  DashboardDay,
-  DashboardAnalytics,
-  ExerciseProgress,
-} from './analyticsService'
-import type { DailyNutritionTotals } from '../nutrition/types'
+import { loadDashboardThunk } from './dashboardSlice'
+import type { DashboardAnalytics, DashboardDay } from './analyticsService'
 import { startWorkoutThunk, loadActiveWorkoutThunk } from '../workouts/workoutThunks'
-
-const rangeOptions: Array<{ days: AnalyticsPeriod; label: string }> = [
-  { days: 7, label: 'Last 7 days' },
-  { days: 30, label: 'Last 30 days' },
-  { days: 90, label: 'Last 90 days' },
-]
 
 function localDateFromString(value: string): Date {
   const [year, month, day] = value.split('-').map(Number)
@@ -41,46 +33,45 @@ function formatDate(value: string, options?: Intl.DateTimeFormatOptions): string
   )
 }
 
-function formatDuration(seconds: number | null): string {
-  if (seconds === null) return 'No valid durations'
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const remainder = minutes % 60
-  return hours ? `${hours} hr ${remainder} min` : `${minutes} min`
-}
-
 function formatMetric(value: number, digits = 0): string {
   return new Intl.NumberFormat(undefined, {
     maximumFractionDigits: digits,
   }).format(value)
 }
 
-function formatDelta(value: number, suffix = ''): string {
-  const rounded = Math.round(value * 10) / 10
-  if (rounded === 0) return `No change${suffix}`
-  const sign = rounded > 0 ? '+' : '−'
-  return `${sign}${formatMetric(Math.abs(rounded), 1)}${suffix}`
+function formatTimestampAsLocalDate(value: string): string {
+  const date = new Date(value)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-function DashboardPage() {
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+export default function DashboardPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const isHome = useLocation().pathname === '/'
+  const [quickLogOpen, setQuickLogOpen] = useState(false)
+
   const {
     activeWorkoutId,
     status: workoutStatus,
     error: workoutError,
   } = useAppSelector((state) => state.workoutUi)
+
   const {
     period,
     analytics,
     status,
     error,
-    exerciseId,
-    exerciseProgress,
-    exerciseStatus,
-    exerciseError,
   } = useAppSelector((state) => state.dashboard)
+
   const [nutritionGoals] = useState<DailyNutritionGoals | null>(
     getSavedNutritionGoals,
   )
@@ -93,595 +84,528 @@ function DashboardPage() {
     void dispatch(loadActiveWorkoutThunk())
   }, [dispatch])
 
-  useEffect(() => {
-    if (exerciseId) void dispatch(loadExerciseProgressThunk(exerciseId))
-  }, [dispatch, exerciseId])
-
-  const changePeriod = (nextPeriod: AnalyticsPeriod) => {
-    dispatch(setDashboardPeriod(nextPeriod))
+  const handleStartWorkout = async () => {
+    if (activeWorkoutId) {
+      navigate('/workouts/active')
+      return
+    }
+    try {
+      await dispatch(startWorkoutThunk(undefined)).unwrap()
+      navigate('/workouts/active')
+    } catch {
+      // workoutError in state will display
+    }
   }
 
-  const chooseExercise = (nextExerciseId: string) => {
-    dispatch(setDashboardExercise(nextExerciseId))
+  const handleRefresh = () => {
+    void dispatch(loadDashboardThunk(period))
   }
 
   return (
     <PageContainer>
-      {!isHome && (
-        <header className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div className="min-w-0">
-            <p className="mb-2 text-sm font-medium text-accent">Training data</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-              Progress
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              {analytics
-                ? formatDate(analytics.period.endDate, { dateStyle: 'full' })
-                : 'Loading current date'}
-            </p>
-          </div>
-          <AnalyticsPeriodSelect period={period} onChange={changePeriod} />
-        </header>
-      )}
-
+      {/* Error state */}
       {status === 'failed' && (
         <div
           role="alert"
-          className="mb-6 flex flex-col justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center"
+          className="mb-6 flex flex-col justify-between gap-3 rounded-2xl border border-danger/20 bg-danger-soft p-4 text-sm text-danger sm:flex-row sm:items-center"
         >
-          <p>{error ?? 'Could not load dashboard analytics.'}</p>
+          <p>{error ?? 'Could not load dashboard data.'}</p>
           <Button
             size="small"
             variant="outline"
             icon={RefreshCw}
-            onClick={() => void dispatch(loadDashboardThunk(period))}
+            onClick={handleRefresh}
           >
             Retry
           </Button>
         </div>
       )}
 
-      {status === 'loading' || !analytics ? (
+      {/* Loading state */}
+      {status === 'loading' && !analytics ? (
         <Card>
-          <p role="status" className="py-12 text-center text-sm text-muted">
-            Loading your progress…
-          </p>
+          <div role="status" className="py-16 text-center">
+            <RefreshCw size={24} className="mx-auto animate-spin text-accent" />
+            <p className="mt-3 text-sm font-medium text-ink">Loading your dashboard…</p>
+            <p className="mt-1 text-xs text-muted">Fetching today's schedule and weekly momentum.</p>
+          </div>
         </Card>
-      ) : (
-        <DashboardContent
+      ) : analytics ? (
+        <DashboardView
           analytics={analytics}
           nutritionGoals={nutritionGoals}
-          exerciseId={exerciseId}
-          exerciseProgress={exerciseProgress}
-          exerciseStatus={exerciseStatus}
-          exerciseError={exerciseError}
-          onChooseExercise={chooseExercise}
-          onRetryExercise={() => {
-            if (exerciseId) void dispatch(loadExerciseProgressThunk(exerciseId))
-          }}
           activeWorkoutId={activeWorkoutId}
           workoutStatus={workoutStatus}
           workoutError={workoutError}
-          onStartWorkout={async () => {
-            if (activeWorkoutId) {
-              navigate('/workouts/active')
-              return
-            }
-            try {
-              await dispatch(startWorkoutThunk(undefined)).unwrap()
-              navigate('/workouts/active')
-            } catch {
-              // The rejected thunk provides the visible error through Redux state.
-            }
-          }}
-          isHome={isHome}
-          onChangePeriod={changePeriod}
-          onActivityLogged={() => void dispatch(loadDashboardThunk(period))}
+          onStartWorkout={handleStartWorkout}
+          onOpenQuickLog={() => setQuickLogOpen(true)}
         />
-      )}
+      ) : null}
+
+      {/* Floating Action Button (FAB) for AI Quick-Log */}
+      <button
+        type="button"
+        onClick={() => setQuickLogOpen(true)}
+        aria-label="Quick log with AI"
+        className="fixed bottom-20 right-4 sm:bottom-8 sm:right-8 z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-fg shadow-lg shadow-accent/25 transition-all hover:opacity-95 hover:shadow-accent/40 active:scale-95 focus-visible:outline-2 focus-visible:outline-accent"
+      >
+        <Sparkles size={18} aria-hidden="true" />
+        <span className="font-medium">Quick Log</span>
+      </button>
+
+      {/* Quick-Log Sheet / Drawer */}
+      <Sheet
+        open={quickLogOpen}
+        onClose={() => setQuickLogOpen(false)}
+        title="Quick Log with AI"
+        variant="adaptive"
+      >
+        <DashboardAiLogger
+          isDrawer
+          onActivityLogged={() => {
+            setQuickLogOpen(false)
+            handleRefresh()
+          }}
+        />
+      </Sheet>
     </PageContainer>
   )
 }
 
-function AnalyticsPeriodSelect({
-  period,
-  onChange,
-}: {
-  period: AnalyticsPeriod
-  onChange: (period: AnalyticsPeriod) => void
-}) {
-  return (
-    <label className="flex min-h-11 flex-col gap-1 text-sm font-medium text-ink">
-      Range
-      <select
-        aria-label="Analytics period"
-        value={period}
-        onChange={(event) => {
-          const option = rangeOptions.find(
-            (item) => item.days === Number(event.currentTarget.value),
-          )
-          if (option) onChange(option.days)
-        }}
-        className="min-h-11 rounded-lg border border-line bg-panel px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-      >
-        {rangeOptions.map((option) => (
-          <option key={option.days} value={option.days}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function DashboardContent({
+function DashboardView({
   analytics,
   nutritionGoals,
-  exerciseId,
-  exerciseProgress,
-  exerciseStatus,
-  exerciseError,
-  onChooseExercise,
-  onRetryExercise,
   activeWorkoutId,
   workoutStatus,
   workoutError,
   onStartWorkout,
-  isHome,
-  onChangePeriod,
-  onActivityLogged,
+  onOpenQuickLog,
 }: {
   analytics: DashboardAnalytics
   nutritionGoals: DailyNutritionGoals | null
-  exerciseId: string
-  exerciseProgress: ExerciseProgress | null
-  exerciseStatus: 'idle' | 'loading' | 'failed'
-  exerciseError: string | null
-  onChooseExercise: (id: string) => void
-  onRetryExercise: () => void
   activeWorkoutId: string | null
   workoutStatus: 'idle' | 'loading' | 'saving' | 'failed'
   workoutError: string | null
   onStartWorkout: () => Promise<void>
-  isHome: boolean
-  onChangePeriod: (period: AnalyticsPeriod) => void
-  onActivityLogged: () => void
+  onOpenQuickLog: () => void
 }) {
-  const [nutritionMetric, setNutritionMetric] =
-    useState<keyof DailyNutritionTotals>('calories')
-  const hasAnyHistory =
-    analytics.workouts.count > 0 || analytics.nutrition.mealLogCount > 0
-  const calorieAverageAvailable = analytics.nutrition.mealLogCount > 0
-  const week = useMemo(() => analytics.days.slice(-7), [analytics.days])
-  const weeklyWorkoutCount = week.reduce((total, day) => total + day.workoutCount, 0)
-  const weeklyTrainingDays = week.filter((day) => day.workoutCount > 0).length
-  const weeklyVolume = week.reduce((total, day) => total + day.trainingVolumeKg, 0)
+  const greeting = getGreeting()
+  const todayDateStr = analytics.period.endDate
+  const formattedToday = formatDate(todayDateStr, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  })
+
+  // Today's data
+  const todayDay: DashboardDay | undefined = analytics.days[analytics.days.length - 1]
+  const todayCalories = todayDay?.nutrition.calories ?? 0
+  const todayProtein = todayDay?.nutrition.proteinG ?? 0
+  const todayCarbs = todayDay?.nutrition.carbsG ?? 0
+  const todayFat = todayDay?.nutrition.fatG ?? 0
+
+  // Check if a workout was completed today
+  const todayCompletedWorkout = useMemo(() => {
+    return analytics.workouts.recent.find((workout) => {
+      const date = formatTimestampAsLocalDate(
+        workout.session.completedAt ?? workout.session.startedAt,
+      )
+      return date === todayDateStr
+    })
+  }, [analytics.workouts.recent, todayDateStr])
+
+  // Last 7 days momentum
+  const weekDays = useMemo(() => analytics.days.slice(-7), [analytics.days])
+  const weeklyWorkoutCount = weekDays.reduce((total, d) => total + d.workoutCount, 0)
+  const weeklyTrainingDays = weekDays.filter((d) => d.workoutCount > 0).length
+  const weeklyVolume = weekDays.reduce((total, d) => total + d.trainingVolumeKg, 0)
+
+  // Recent 3 activities
+  const recentActivities = analytics.activities.slice(0, 3)
 
   return (
-    <div className="space-y-8">
-      <section aria-labelledby="today-title">
-        <div className="mb-5 flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
-              Training log · {formatDate(analytics.period.endDate, { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-            <h1 id="today-title" className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-              Today
-            </h1>
-          </div>
+    <div className="space-y-6">
+      {/* 1. Hero Section */}
+      <header className="flex flex-col justify-between gap-4 border-b border-line pb-6 sm:flex-row sm:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+            {formattedToday}
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+            {greeting} 👋
+          </h1>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            size="large"
+            variant="outline"
+            icon={Sparkles}
+            onClick={onOpenQuickLog}
+            className="flex-1 sm:flex-initial"
+          >
+            Quick Log
+          </Button>
+
+          <Button
+            variant="primary"
             icon={activeWorkoutId ? Play : Dumbbell}
             loading={workoutStatus === 'saving'}
             disabled={workoutStatus === 'loading'}
             onClick={() => void onStartWorkout()}
-            className="w-full sm:w-auto"
+            className="flex-1 sm:flex-initial"
           >
-            {activeWorkoutId ? 'Resume workout' : 'Start workout'}
+            {activeWorkoutId ? 'Resume Workout' : 'Start Workout'}
           </Button>
         </div>
-        {workoutError && (
-          <p role="alert" className="mb-4 text-sm text-danger">
-            {workoutError}
-          </p>
-        )}
-        {activeWorkoutId && (
-          <Link
-            to="/workouts/active"
-            className="mb-5 flex min-h-11 items-center justify-between border-b border-line py-3 text-sm text-ink hover:text-accent"
-          >
-            <span>Workout in progress</span>
-            <ArrowRight aria-hidden="true" size={17} />
-          </Link>
-        )}
-        <div className="grid grid-cols-3 divide-x divide-line border-b border-line py-4">
-          <WeeklyMetric label="Workouts" value={String(weeklyWorkoutCount)} />
-          <WeeklyMetric label="Training days" value={String(weeklyTrainingDays)} />
-          <WeeklyMetric label="Volume" value={`${formatMetric(weeklyVolume)} kg`} />
-        </div>
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Recent workouts</h2>
-            <Link
-              to="/workouts"
-              className="flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent"
-            >
-              History <ArrowRight aria-hidden="true" size={15} />
-            </Link>
-          </div>
-          {analytics.workouts.recent.length ? (
-            <ul className="divide-y divide-line border-y border-line">
-              {analytics.workouts.recent.slice(0, 3).map((workout) => (
-                <li key={workout.session.id}>
-                  <Link
-                    to={`/workouts/${workout.session.id}`}
-                    className="flex min-h-14 items-center justify-between gap-3 py-3 text-sm hover:text-accent"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-ink">{workout.session.name}</span>
-                      <span className="mt-1 block text-xs text-muted">
-                        {formatDate(formatTimestampAsLocalDate(workout.session.completedAt ?? workout.session.startedAt))}
-                        {' · '}{workout.exerciseCount} exercises · {workout.completedSetCount} sets
-                      </span>
-                    </span>
-                    <ArrowRight aria-hidden="true" className="shrink-0 text-muted" size={17} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="border-y border-line py-4 text-sm text-muted">
-              No completed workouts in this period yet.
-            </p>
-          )}
-        </div>
-      </section>
-      <DashboardAiLogger onActivityLogged={onActivityLogged} />
+      </header>
 
-      {!hasAnyHistory && (
-        <Card>
-          <EmptyState
-            icon={Activity}
-            title="No activity recorded in this period"
-            description="Start a workout or log a meal to see your real progress here. Unlogged days are not evidence of zero intake."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <Link to="/ai-logger">
-                  <Button icon={Bot}>Log with AI</Button>
-                </Link>
-                <Link to="/workouts">
-                  <Button variant="outline" icon={Dumbbell}>Go to workouts</Button>
-                </Link>
-                <Link to="/nutrition">
-                  <Button variant="outline" icon={Apple}>Log a meal</Button>
-                </Link>
-              </div>
-            }
-          />
-        </Card>
+      {/* Workout error feedback */}
+      {workoutError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-danger/20 bg-danger-soft p-3 text-xs text-danger"
+        >
+          {workoutError}
+        </div>
       )}
 
-      <section aria-labelledby="overview-stats-title">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 id="overview-stats-title" className="text-xl font-semibold text-ink">
-              Period overview
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              {formatDate(analytics.period.startDate)} – {formatDate(analytics.period.endDate)} · today included
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isHome && (
-              <AnalyticsPeriodSelect
-                period={analytics.period.days}
-                onChange={onChangePeriod}
-              />
-            )}
-            <Link
-              to="/workouts"
-              className="min-h-10 rounded-md px-2 py-2 text-sm font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              Workout history
-            </Link>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <StatCard
-            label="Completed workouts"
-            value={formatMetric(analytics.workouts.count)}
-            note={comparisonNote(analytics, analytics.comparison.workouts, 'workouts')}
-          />
-          <StatCard
-            label="Training days"
-            value={formatMetric(analytics.workouts.trainingDays)}
-            note={comparisonNote(analytics, analytics.comparison.trainingDays, 'days')}
-          />
-          <StatCard
-            label="Completed time"
-            value={formatDuration(analytics.workouts.totalDurationSeconds)}
-            note="Valid completed-session timestamps only"
-          />
-          <StatCard
-            label="Training volume"
-            value={`${formatMetric(analytics.workouts.totalVolumeKg)} kg`}
-            note="External load · completed sets only"
-          />
-          <StatCard
-            label="Avg. recorded calories"
-            value={calorieAverageAvailable
-              ? `${formatMetric(analytics.nutrition.averagePerCalendarDay.calories)} kcal`
-              : 'No entries'}
-            note="Per calendar day; unlogged days count as no recorded intake"
-          />
-          <StatCard
-            label="Avg. recorded protein"
-            value={calorieAverageAvailable
-              ? `${formatMetric(analytics.nutrition.averagePerCalendarDay.proteinG)} g`
-              : 'No entries'}
-            note="Per calendar day; based on meal-log snapshots"
-          />
-        </div>
-        {calorieAverageAvailable && (
-          <p className="mt-2 text-xs leading-5 text-muted">
-            Nutrition averages describe recorded entries, not verified total consumption.
-            {analytics.nutrition.daysWithEntries} of {analytics.period.days} days have meal entries.
-          </p>
-        )}
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <ComparisonCard
-            label="Completed workouts"
-            value={`${analytics.workouts.count} vs ${analytics.comparison.previousWorkouts}`}
-          />
-          <ComparisonCard
-            label="Training days"
-            value={`${analytics.workouts.trainingDays} vs ${analytics.comparison.previousTrainingDays}`}
-          />
-          <ComparisonCard
-            label="Recorded average calories"
-            value={calorieAverageAvailable || analytics.comparison.hasPreviousNutrition
-              ? `${formatMetric(analytics.nutrition.averagePerCalendarDay.calories)} vs ${formatMetric(analytics.comparison.previousAverageCalories)} kcal/day`
-              : 'No meal entries in either period'}
-          />
-        </div>
-        <p className="mt-2 text-xs text-muted">
-          Compared with the immediately preceding {analytics.period.days} calendar days; no percentage is shown for a zero baseline.
-        </p>
-      </section>
-
-      <section aria-labelledby="consistency-title">
-        <div className="mb-3">
-          <h2 id="consistency-title" className="text-xl font-semibold text-ink">
-            Workout consistency
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            {formatMetric(analytics.workouts.perSevenDays, 1)} completed workouts per 7 calendar days
-            {' · '}one training day per distinct local completion date
-          </p>
-        </div>
-        <Card title="Completed workouts by local day" description="A workout is counted on its local completion date.">
-          <DailyBarChart
-            days={analytics.days}
-            value={(day) => day.workoutCount > 0 ? day.workoutCount : null}
-            label={(day) => `${day.workoutCount} completed workout${day.workoutCount === 1 ? '' : 's'}`}
-            color="bg-accent"
-            emptyMessage="No completed workouts in this period."
-          />
-        </Card>
-      </section>
-
-      <section aria-labelledby="nutrition-trend-title">
-        <div className="mb-3">
-          <h2 id="nutrition-trend-title" className="text-xl font-semibold text-ink">
-            Recorded nutrition
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Daily calories and macros are summed from meal-log snapshots, including the recorded portion size.
-          </p>
-        </div>
-        <Card
-          title="Daily nutrition trend"
-          description="Days with no meal entries are marked separately and are not evidence of zero consumption."
-          actions={
-            <Link
-              to="/nutrition"
-              className="min-h-10 rounded-md px-2 py-2 text-sm font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              Open nutrition
-            </Link>
-          }
-        >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <label className="flex min-h-11 flex-col gap-1 text-sm font-medium text-ink">
-              Chart metric
-              <select
-                aria-label="Daily nutrition chart metric"
-                value={nutritionMetric}
-                onChange={(event) => {
-                  const candidate = event.currentTarget.value
-                  if (
-                    candidate === 'calories' ||
-                    candidate === 'proteinG' ||
-                    candidate === 'carbsG' ||
-                    candidate === 'fatG'
-                  ) {
-                    setNutritionMetric(candidate)
-                  }
-                }}
-                className="min-h-11 rounded-lg border border-line bg-panel px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-              >
-                <option value="calories">Calories (kcal)</option>
-                <option value="proteinG">Protein (g)</option>
-                <option value="carbsG">Carbohydrates (g)</option>
-                <option value="fatG">Fat (g)</option>
-              </select>
-            </label>
-          </div>
-          <DailyBarChart
-            days={analytics.days}
-            value={(day) => day.hasMealEntries ? day.nutrition[nutritionMetric] : null}
-            label={(day) => day.hasMealEntries
-              ? nutritionMetric === 'calories'
-                ? `${formatMetric(day.nutrition.calories)} kcal recorded`
-                : `${formatMetric(day.nutrition[nutritionMetric])} g recorded`
-              : 'No entries'}
-            color={nutritionMetric === 'calories' ? 'bg-emerald-600' : 'bg-accent'}
-            emptyMessage="No meal entries in this period."
-          />
-          {analytics.nutrition.mealLogCount > 0 && (
-            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-line pt-4 sm:grid-cols-4">
-              <NutritionValue label="Calories" value={analytics.nutrition.averagePerCalendarDay.calories} unit="kcal/day" />
-              <NutritionValue label="Protein" value={analytics.nutrition.averagePerCalendarDay.proteinG} unit="g/day" />
-              <NutritionValue label="Carbohydrates" value={analytics.nutrition.averagePerCalendarDay.carbsG} unit="g/day" />
-              <NutritionValue label="Fat" value={analytics.nutrition.averagePerCalendarDay.fatG} unit="g/day" />
+      {/* Active Workout In-Progress Alert Banner */}
+      {activeWorkoutId && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-4 text-ink">
+          <div className="flex items-center gap-3">
+            <span className="relative flex size-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+              <span className="relative inline-flex size-3 rounded-full bg-accent" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold">Active workout in progress</p>
+              <p className="text-xs text-muted">Your training session is currently running.</p>
             </div>
-          )}
-          {nutritionGoals && (
-            <div className="mt-5 border-t border-line pt-4">
-              <h3 className="text-sm font-semibold text-ink">
-                Saved daily targets vs recorded period averages
-              </h3>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                Targets are the values you saved in Nutrition. Averages use all calendar days and do not represent verified total intake.
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <GoalReference
-                  label="Calories"
-                  average={analytics.nutrition.averagePerCalendarDay.calories}
-                  target={nutritionGoals.calories}
-                  unit="kcal"
-                  hasEntries={analytics.nutrition.mealLogCount > 0}
-                />
-                <GoalReference
-                  label="Protein"
-                  average={analytics.nutrition.averagePerCalendarDay.proteinG}
-                  target={nutritionGoals.proteinG}
-                  unit="g"
-                  hasEntries={analytics.nutrition.mealLogCount > 0}
-                />
-                <GoalReference
-                  label="Carbohydrates"
-                  average={analytics.nutrition.averagePerCalendarDay.carbsG}
-                  target={nutritionGoals.carbsG}
-                  unit="g"
-                  hasEntries={analytics.nutrition.mealLogCount > 0}
-                />
-                <GoalReference
-                  label="Fat"
-                  average={analytics.nutrition.averagePerCalendarDay.fatG}
-                  target={nutritionGoals.fatG}
-                  unit="g"
-                  hasEntries={analytics.nutrition.mealLogCount > 0}
-                />
-              </div>
-            </div>
-          )}
-        </Card>
-      </section>
-
-      <section aria-labelledby="exercise-progress-title">
-        <div className="mb-3">
-          <h2 id="exercise-progress-title" className="text-xl font-semibold text-ink">
-            Exercise progress
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Exact exercise identity; comparisons use completed sets only.
-          </p>
-        </div>
-        <Card
-          title="Recorded performance history"
-          description="Best recorded weight is the highest external load logged for the selected exercise; it is not an estimated strength measure."
-          actions={
-            <label className="flex min-h-11 flex-col gap-1 text-sm font-medium text-ink sm:min-w-52">
-              Exercise
-              <select
-                aria-label="Exercise progress"
-                value={exerciseId}
-                onChange={(event) => onChooseExercise(event.currentTarget.value)}
-                className="min-h-11 max-w-full rounded-lg border border-line bg-panel px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-              >
-                <option value="">Choose an exercise</option>
-                {analytics.exercises.map((exercise) => (
-                  <option key={exercise.id} value={exercise.id}>
-                    {exercise.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          }
-        >
-          {!analytics.exercises.length ? (
-            <EmptyState
-              icon={Dumbbell}
-              title="No exercises available"
-              description="Add an exercise to a workout to explore its recorded performance."
-              action={
-                <Link to="/workouts">
-                  <Button variant="outline">Go to workouts</Button>
-                </Link>
-              }
-            />
-          ) : !exerciseId ? (
-            <p className="text-sm text-muted">Choose an exercise to load its full completed history.</p>
-          ) : exerciseStatus === 'loading' ? (
-            <p role="status" className="py-4 text-sm text-muted">Loading exercise history…</p>
-          ) : exerciseStatus === 'failed' ? (
-            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-red-700">
-              <p>{exerciseError ?? 'Could not load exercise history.'}</p>
-              <Button size="small" variant="outline" onClick={onRetryExercise}>Retry</Button>
-            </div>
-          ) : exerciseProgress ? (
-            <ExerciseHistory progress={exerciseProgress} />
-          ) : (
-            <p className="text-sm text-muted">Select an exercise to see performance.</p>
-          )}
-        </Card>
-      </section>
-
-      <section aria-labelledby="recent-activity-title">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h2 id="recent-activity-title" className="text-xl font-semibold text-ink">
-              Recent activity
-            </h2>
-            <p className="mt-1 text-sm text-muted">Real workout and meal records from the selected period.</p>
           </div>
           <Link
-            to="/workouts"
-            className="min-h-10 rounded-md px-2 py-2 text-sm font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+            to="/workouts/active"
+            className="flex items-center gap-1 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90"
           >
-            History
+            <span>Resume</span>
+            <ArrowRight size={14} aria-hidden="true" />
           </Link>
         </div>
-        {analytics.activities.length ? (
-          <ul className="divide-y divide-line rounded-2xl border border-line bg-panel">
-            {analytics.activities.map((activity) => (
-              <li key={`${activity.type}:${activity.id}`} className="flex min-w-0 items-center gap-3 p-4">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface text-accent" aria-hidden="true">
-                  {activity.type === 'workout' ? <Dumbbell size={18} /> : <Apple size={18} />}
+      )}
+
+      {/* 2. Today's Glance: 2 High-Focus Cards */}
+      <section aria-labelledby="today-glance-title">
+        <h2 id="today-glance-title" className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+          Today's Glance
+        </h2>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Card A: Today's Workout */}
+          <Card className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-surface text-accent">
+                  <Dumbbell size={18} aria-hidden="true" />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">{activity.title}</p>
-                  <p className="text-xs text-muted">
-                    {formatDate(formatTimestampAsLocalDate(activity.timestamp), {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })} · {activity.description}
-                  </p>
+                {activeWorkoutId ? (
+                  <Badge variant="warning">In Progress</Badge>
+                ) : todayCompletedWorkout ? (
+                  <Badge variant="success">Completed</Badge>
+                ) : (
+                  <Badge variant="default">Rest / Planned</Badge>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <p className="text-xs font-medium text-muted">Today's Workout</p>
+                {activeWorkoutId ? (
+                  <h3 className="mt-1 text-lg font-semibold text-ink">Session in progress</h3>
+                ) : todayCompletedWorkout ? (
+                  <h3 className="mt-1 text-lg font-semibold text-ink">
+                    {todayCompletedWorkout.session.name}
+                  </h3>
+                ) : (
+                  <h3 className="mt-1 text-lg font-semibold text-ink">No workout yet today</h3>
+                )}
+
+                <p className="mt-1 text-xs text-muted">
+                  {activeWorkoutId
+                    ? 'Pick up where you left off in your current workout.'
+                    : todayCompletedWorkout
+                      ? `${todayCompletedWorkout.exerciseCount} exercises · ${todayCompletedWorkout.completedSetCount} completed sets · ${formatMetric(todayCompletedWorkout.trainingVolumeKg)} kg volume`
+                      : 'Hit the gym or log a past session to keep your momentum going.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-line pt-3">
+              {activeWorkoutId ? (
+                <Link
+                  to="/workouts/active"
+                  className="flex items-center justify-between text-xs font-semibold text-accent hover:underline"
+                >
+                  <span>Resume active workout</span>
+                  <ArrowRight size={14} aria-hidden="true" />
+                </Link>
+              ) : todayCompletedWorkout ? (
+                <Link
+                  to={`/workouts/${todayCompletedWorkout.session.id}`}
+                  className="flex items-center justify-between text-xs font-semibold text-accent hover:underline"
+                >
+                  <span>View workout summary</span>
+                  <ArrowRight size={14} aria-hidden="true" />
+                </Link>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => void onStartWorkout()}
+                    className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                  >
+                    <span>Start workout now</span>
+                    <ArrowRight size={14} aria-hidden="true" />
+                  </button>
+                  <Link
+                    to="/workouts"
+                    className="text-xs text-muted hover:text-ink"
+                  >
+                    Routines
+                  </Link>
                 </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Card B: Today's Nutrition */}
+          <Card className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-surface text-accent">
+                  <Apple size={18} aria-hidden="true" />
+                </span>
+                <Link
+                  to="/nutrition"
+                  className="text-xs font-medium text-accent hover:underline"
+                >
+                  Nutrition details
+                </Link>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {/* Calories Progress */}
+                <div>
+                  <div className="flex items-center justify-between text-xs font-medium">
+                    <span className="text-muted">Calories</span>
+                    <span className="tabular-nums text-ink">
+                      {formatMetric(todayCalories)}{' '}
+                      {nutritionGoals ? `/ ${formatMetric(nutritionGoals.calories)} kcal` : 'kcal'}
+                    </span>
+                  </div>
+                  {nutritionGoals ? (
+                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                        style={{
+                          width: `${Math.min(100, Math.round((todayCalories / Math.max(1, nutritionGoals.calories)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Protein Progress */}
+                <div>
+                  <div className="flex items-center justify-between text-xs font-medium">
+                    <span className="text-muted">Protein</span>
+                    <span className="tabular-nums text-ink">
+                      {formatMetric(todayProtein)}{' '}
+                      {nutritionGoals ? `/ ${formatMetric(nutritionGoals.proteinG)} g` : 'g'}
+                    </span>
+                  </div>
+                  {nutritionGoals ? (
+                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all duration-300"
+                        style={{
+                          width: `${Math.min(100, Math.round((todayProtein / Math.max(1, nutritionGoals.proteinG)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Secondary Macros */}
+                <div className="flex items-center gap-3 pt-1 text-xs text-muted">
+                  <span>
+                    <strong className="font-semibold text-ink">{formatMetric(todayCarbs)}g</strong> carbs
+                  </span>
+                  <span>·</span>
+                  <span>
+                    <strong className="font-semibold text-ink">{formatMetric(todayFat)}g</strong> fat
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-line pt-3">
+              <div className="flex items-center justify-between">
+                <Link
+                  to="/nutrition"
+                  className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                >
+                  <Plus size={13} aria-hidden="true" />
+                  <span>Log a meal</span>
+                </Link>
+                {!nutritionGoals && (
+                  <Link
+                    to="/nutrition"
+                    className="text-xs text-muted hover:text-ink"
+                  >
+                    Set daily targets
+                  </Link>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* 3. This Week's Momentum (7-Day Strip) */}
+      <section aria-labelledby="momentum-title">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 id="momentum-title" className="text-sm font-semibold uppercase tracking-wider text-muted">
+            This Week's Momentum
+          </h2>
+          <Link
+            to="/progress"
+            className="flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+          >
+            <span>Full analytics</span>
+            <ArrowRight size={13} aria-hidden="true" />
+          </Link>
+        </div>
+
+        <Card>
+          {/* 7-Day Day Strip */}
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {weekDays.map((day) => {
+              const dateObj = localDateFromString(day.date)
+              const dayName = new Intl.DateTimeFormat(undefined, { weekday: 'narrow' }).format(dateObj)
+              const dayNum = dateObj.getDate()
+              const isToday = day.date === todayDateStr
+              const hasWorkout = day.workoutCount > 0
+
+              return (
+                <div
+                  key={day.date}
+                  className={`flex flex-col items-center rounded-xl p-2 transition-colors ${
+                    isToday
+                      ? 'border border-accent/40 bg-accent/5'
+                      : 'bg-surface/50'
+                  }`}
+                >
+                  <span className={`text-[11px] font-semibold ${isToday ? 'text-accent' : 'text-muted'}`}>
+                    {dayName}
+                  </span>
+                  <span className={`mt-0.5 text-xs font-bold ${isToday ? 'text-ink' : 'text-ink/80'}`}>
+                    {dayNum}
+                  </span>
+                  <div className="mt-2 flex size-6 items-center justify-center">
+                    {hasWorkout ? (
+                      <span
+                        className="flex size-5 items-center justify-center rounded-full bg-accent text-accent-fg"
+                        title={`${day.workoutCount} workout completed`}
+                      >
+                        <Check size={12} className="stroke-[3]" aria-hidden="true" />
+                      </span>
+                    ) : (
+                      <span className="size-1.5 rounded-full bg-line" title="Rest day" />
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Weekly Summary Stats */}
+          <div className="mt-4 grid grid-cols-3 divide-x divide-line border-t border-line pt-4 text-center">
+            <div className="px-2">
+              <p className="text-[11px] text-muted">Workouts</p>
+              <p className="mt-0.5 text-base font-bold tabular-nums text-ink sm:text-lg">
+                {weeklyWorkoutCount}
+              </p>
+            </div>
+            <div className="px-2">
+              <p className="text-[11px] text-muted">Training Days</p>
+              <p className="mt-0.5 text-base font-bold tabular-nums text-ink sm:text-lg">
+                {weeklyTrainingDays} <span className="text-xs font-normal text-muted">/ 7</span>
+              </p>
+            </div>
+            <div className="px-2">
+              <p className="text-[11px] text-muted">Volume</p>
+              <p className="mt-0.5 text-base font-bold tabular-nums text-ink sm:text-lg">
+                {formatMetric(weeklyVolume)} <span className="text-xs font-normal text-muted">kg</span>
+              </p>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* 4. Recent Activity */}
+      <section aria-labelledby="recent-activity-title">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 id="recent-activity-title" className="text-sm font-semibold uppercase tracking-wider text-muted">
+            Recent Activity
+          </h2>
+          <Link
+            to="/workouts"
+            className="flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+          >
+            <span>History</span>
+            <ChevronRight size={13} aria-hidden="true" />
+          </Link>
+        </div>
+
+        {recentActivities.length > 0 ? (
+          <ul className="divide-y divide-line rounded-2xl border border-line bg-panel">
+            {recentActivities.map((activity) => (
+              <li
+                key={`${activity.type}:${activity.id}`}
+                className="flex items-center justify-between gap-3 p-3.5 transition-colors hover:bg-hover sm:p-4"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-accent"
+                    aria-hidden="true"
+                  >
+                    {activity.type === 'workout' ? (
+                      <Dumbbell size={16} />
+                    ) : (
+                      <Apple size={16} />
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">
+                      {activity.title}
+                    </p>
+                    <p className="truncate text-xs text-muted">
+                      {activity.description}
+                    </p>
+                  </div>
+                </div>
+
                 {activity.type === 'workout' && activity.workoutId ? (
                   <Link
                     to={`/workouts/${activity.workoutId}`}
-                    className="shrink-0 rounded-md px-2 py-2 text-sm font-medium text-accent focus-visible:outline-2 focus-visible:outline-accent"
+                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
                   >
                     View
                   </Link>
                 ) : (
                   <Link
                     to="/nutrition"
-                    className="shrink-0 rounded-md px-2 py-2 text-sm font-medium text-accent focus-visible:outline-2 focus-visible:outline-accent"
+                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
                   >
-                    Nutrition
+                    View
                   </Link>
                 )}
               </li>
@@ -689,248 +613,22 @@ function DashboardContent({
           </ul>
         ) : (
           <Card>
-            <p className="text-sm text-muted">No recorded activity in this period.</p>
+            <div className="py-8 text-center text-sm text-muted">
+              <p>No recent activity recorded yet.</p>
+              <div className="mt-3 flex justify-center gap-2">
+                <Button size="small" variant="outline" icon={Dumbbell} onClick={() => void onStartWorkout()}>
+                  Start workout
+                </Button>
+                <Link to="/nutrition">
+                  <Button size="small" variant="outline" icon={Apple}>
+                    Log meal
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </Card>
         )}
       </section>
     </div>
   )
 }
-
-function WeeklyMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="px-3 first:pl-0 last:pr-0 sm:px-5">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-lg font-semibold tabular-nums text-ink">{value}</p>
-    </div>
-  )
-}
-
-function formatTimestampAsLocalDate(value: string): string {
-  const date = new Date(value)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function comparisonNote(
-  analytics: DashboardAnalytics,
-  delta: number,
-  noun: string,
-): string {
-  return analytics.comparison.hasPreviousData
-    ? `${formatDelta(delta)} vs previous ${analytics.period.days} days`
-    : `No previous-period ${noun} data`
-}
-
-function StatCard({
-  label,
-  value,
-  note,
-}: {
-  label: string
-  value: string
-  note: string
-}) {
-  return (
-    <Card className="min-w-0">
-      <p className="text-xs font-medium leading-5 text-muted">{label}</p>
-      <p className="mt-2 break-words text-xl font-semibold tabular-nums text-ink sm:text-2xl">
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-muted">{note}</p>
-    </Card>
-  )
-}
-
-function ComparisonCard({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="rounded-xl border border-line bg-panel px-4 py-3">
-      <p className="text-xs text-muted">{label} · current vs previous equal-length period</p>
-      <p className="mt-1 text-sm font-semibold text-ink">
-        {value}
-      </p>
-    </div>
-  )
-}
-
-function NutritionValue({
-  label,
-  value,
-  unit,
-}: {
-  label: string
-  value: number
-  unit: string
-}) {
-  return (
-    <div>
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-ink">
-        {formatMetric(value)} <span className="font-normal text-muted">{unit}</span>
-      </p>
-    </div>
-  )
-}
-
-function GoalReference({
-  label,
-  average,
-  target,
-  unit,
-  hasEntries,
-}: {
-  label: string
-  average: number
-  target: number
-  unit: string
-  hasEntries: boolean
-}) {
-  return (
-    <div className="rounded-lg bg-surface p-3">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-ink">
-        {hasEntries ? formatMetric(average) : 'No entries'}{' '}
-        <span className="font-normal text-muted">{unit} / {formatMetric(target)} {unit} target</span>
-      </p>
-    </div>
-  )
-}
-
-function DailyBarChart({
-  days,
-  value,
-  label,
-  color,
-  emptyMessage,
-}: {
-  days: DashboardDay[]
-  value: (day: DashboardDay) => number | null
-  label: (day: DashboardDay) => string
-  color: string
-  emptyMessage: string
-}) {
-  const values = days.map(value)
-  const max = Math.max(1, ...values.filter((item): item is number => item !== null))
-  const anyData = values.some((item) => item !== null && item > 0)
-  const hasEntries = values.some((item) => item !== null)
-
-  return (
-    <>
-      <div
-        role="img"
-        aria-label={`Daily recorded values shown from ${days[0]?.date ?? ''} to ${days.at(-1)?.date ?? ''}.`}
-        className="grid h-36 grid-flow-col auto-cols-fr items-end gap-1 sm:h-44 sm:gap-1.5"
-      >
-        {days.map((day, index) => {
-          const amount = values[index]
-          const height = amount === null || amount <= 0 ? 0 : Math.max(4, (amount / max) * 100)
-          const title = `${formatDate(day.date, { dateStyle: 'medium' })}: ${label(day)}`
-          return (
-            <div
-              key={day.date}
-              title={title}
-              className="flex h-full min-w-0 items-end justify-center"
-              aria-hidden="true"
-            >
-              {amount === null ? (
-                <span className="h-0.5 w-full rounded-full bg-line" />
-              ) : (
-                <span
-                  className={`w-full rounded-t-sm ${amount > 0 ? color : 'bg-line'}`}
-                  style={{ height: `${height}%` }}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-      <div className="mt-2 flex justify-between text-xs text-muted" aria-hidden="true">
-        <span>{days[0] ? formatDate(days[0].date, { month: 'short', day: 'numeric' }) : ''}</span>
-        <span>{days.at(-1) ? formatDate(days.at(-1)!.date, { month: 'short', day: 'numeric' }) : ''}</span>
-      </div>
-      <p className="mt-3 text-xs leading-5 text-muted">
-        {anyData
-          ? `${values.filter((amount) => amount !== null && amount > 0).length} day${values.filter((amount) => amount !== null && amount > 0).length === 1 ? '' : 's'} with a positive recorded value. Daily values are also listed in accessible text.`
-          : hasEntries
-            ? 'Meal entries exist, but the selected metric totals zero.'
-            : emptyMessage}
-      </p>
-      <ul className="sr-only">
-        {days.map((day, index) => (
-          <li key={day.date}>
-            {formatDate(day.date)}: {values[index] === null ? 'No entries' : label(day)}
-          </li>
-        ))}
-      </ul>
-    </>
-  )
-}
-
-function ExerciseHistory({ progress }: { progress: ExerciseProgress }) {
-  const recentEntries = progress.entries.slice(-10)
-  const recentList = progress.entries.slice(-5).reverse()
-  const max = Math.max(1, ...recentEntries.map((entry) => entry.bestWeightKg))
-
-  if (!progress.entries.length || progress.bestRecordedWeightKg === null) {
-    return (
-      <p className="text-sm text-muted">
-        No completed performance yet. Record completed sets in completed workouts to build an exercise history.
-      </p>
-    )
-  }
-
-  return (
-    <div>
-      <p className="mb-3 text-sm text-ink">
-        Best recorded weight: <strong>{formatMetric(progress.bestRecordedWeightKg)} kg</strong>
-        <span className="text-muted"> · highest external load in completed sets</span>
-      </p>
-      <div
-        role="img"
-        aria-label={`Recent best recorded weight by completed workout. ${recentEntries.map((entry) => `${formatDate(formatTimestampAsLocalDate(entry.completedAt))}: ${formatMetric(entry.bestWeightKg)} kilograms`).join('; ')}`}
-        className="grid h-28 grid-flow-col auto-cols-fr items-end gap-2 rounded-xl bg-surface p-3"
-      >
-        {recentEntries.map((entry) => (
-          <div key={entry.workoutId} className="flex h-full min-w-0 items-end" aria-hidden="true" title={`${formatDate(formatTimestampAsLocalDate(entry.completedAt))}: ${formatMetric(entry.bestWeightKg)} kg`}>
-            <span
-              className="w-full rounded-t-sm bg-accent"
-              style={{ height: `${Math.max(4, (entry.bestWeightKg / max) * 100)}%` }}
-            />
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 text-xs text-muted">
-        Recent completed workouts; each bar is the highest recorded weight in that workout. This is not a one-rep-max estimate.
-      </p>
-      <ul className="mt-4 divide-y divide-line">
-        {recentList.map((entry) => (
-          <li key={entry.workoutId} className="flex flex-wrap items-start justify-between gap-2 py-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-ink">{entry.exerciseNameSnapshot}</p>
-              <p className="text-xs text-muted">
-                {formatDate(formatTimestampAsLocalDate(entry.completedAt))} ·{' '}
-                {entry.sets.map((set) => `${formatMetric(set.weightKg)} kg × ${set.reps}`).join(' · ')}
-              </p>
-            </div>
-            <Link
-              to={`/workouts/${entry.workoutId}`}
-              className="min-h-10 shrink-0 rounded-md px-2 py-2 text-sm font-medium text-accent focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              Workout details
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-export default DashboardPage

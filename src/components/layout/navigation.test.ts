@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { navigationItems } from './navigation'
 
 describe('navigationItems', () => {
-  it('includes AI Logger in primary navigation', () => {
+  it('does not include standalone AI Logger in primary navigation', () => {
     const aiLoggerItem = navigationItems.find((item) => item.label === 'AI Logger')
-    expect(aiLoggerItem).toBeDefined()
-    expect(aiLoggerItem?.href).toBe('/ai-logger')
+    expect(aiLoggerItem).toBeUndefined()
+  })
+
+  it('includes core navigation items (Dashboard, Workouts, Progress, Nutrition, Settings)', () => {
+    const labels = navigationItems.map((item) => item.label)
+    expect(labels).toEqual(['Dashboard', 'Workouts', 'Progress', 'Nutrition', 'Settings'])
   })
 
   it('includes Settings pointing to /settings', () => {

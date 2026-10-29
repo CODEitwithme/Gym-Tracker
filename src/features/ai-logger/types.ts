@@ -28,6 +28,11 @@ export interface ParsedWorkout {
   notes: string | null
   confidence: 'high' | 'low'
   followUpQuestion: string | null
+  sessionName?: string | null
+  startTime?: string | null
+  endTime?: string | null
+  durationMinutes?: number | null
+  workoutDate?: string | null
 }
 
 export interface ParsedMealItem {
@@ -78,6 +83,8 @@ export interface ConfirmedWorkout {
   exercises?: ConfirmedExerciseItem[]
   sessionName?: string
   notes?: string
+  startedAt?: string
+  completedAt?: string
   // Legacy / single exercise compatibility fields
   exercise?: string
   weight?: number | null

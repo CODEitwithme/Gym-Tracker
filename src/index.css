@@ -10,6 +10,7 @@
   --color-accent: var(--theme-accent);
   --color-accent-hover: var(--theme-accent-hover);
   --color-accent-soft: var(--theme-accent-soft);
+  --color-accent-fg: var(--theme-accent-fg);
   --color-danger: var(--theme-danger);
   --color-danger-soft: var(--theme-danger-soft);
   --color-danger-fill: var(--theme-danger-fill);
@@ -54,68 +55,70 @@
   font-optical-sizing: auto;
 
   color-scheme: light;
-  --theme-background: #f7f6f2;
+  --theme-background: #f8f9fa;
   --theme-surface: #ffffff;
-  --theme-secondary-surface: #efeee9;
-  --theme-text: #171717;
-  --theme-muted: #696969;
-  --theme-border: #dad9d3;
-  --theme-accent: #e52222;
-  --theme-accent-hover: #c91e1e;
-  --theme-accent-soft: #fbe4e2;
+  --theme-secondary-surface: #f1f3f5;
+  --theme-text: #09090b;
+  --theme-muted: #64748b;
+  --theme-border: #e2e8f0;
+  --theme-accent: #65a30d;
+  --theme-accent-hover: #4d7c0f;
+  --theme-accent-soft: #f7fee7;
+  --theme-accent-fg: #ffffff;
   --theme-danger: #b42318;
   --theme-danger-soft: #fef0ee;
   --theme-danger-fill: #b42318;
   --theme-danger-hover: #8f1d15;
-  --theme-success: #16794b;
-  --theme-success-soft: #e7f4ec;
+  --theme-success: #65a30d;
+  --theme-success-soft: #f7fee7;
   --theme-warning: #855b00;
   --theme-warning-soft: #f7eed4;
-  --theme-info: #175b85;
-  --theme-info-soft: #e8f2f8;
+  --theme-info: #0284c7;
+  --theme-info-soft: #f0f9ff;
 
   /* Elevation shadows (light) */
   --shadow-card:
-    0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+    0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.03);
   --shadow-float:
-    0 4px 20px -2px rgb(0 0 0 / 0.1), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+    0 4px 20px -2px rgb(0 0 0 / 0.08), 0 2px 6px -2px rgb(0 0 0 / 0.04);
   --shadow-sheet:
-    0 -2px 24px -4px rgb(0 0 0 / 0.1), 0 -1px 6px -1px rgb(0 0 0 / 0.06);
+    0 -2px 24px -4px rgb(0 0 0 / 0.08), 0 -1px 6px -1px rgb(0 0 0 / 0.04);
   --shadow-modal:
-    0 20px 60px -8px rgb(0 0 0 / 0.18), 0 8px 20px -4px rgb(0 0 0 / 0.12);
+    0 20px 60px -8px rgb(0 0 0 / 0.15), 0 8px 20px -4px rgb(0 0 0 / 0.08);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --theme-background: #121212;
-  --theme-surface: #1a1a1a;
-  --theme-secondary-surface: #222222;
-  --theme-text: #f4f4f4;
-  --theme-muted: #a0a0a0;
-  --theme-border: #333333;
-  --theme-accent: #ff3030;
-  --theme-accent-hover: #e62828;
-  --theme-accent-soft: #3a2020;
+  --theme-background: #09090b;
+  --theme-surface: #121215;
+  --theme-secondary-surface: #18181b;
+  --theme-text: #f4f4f5;
+  --theme-muted: #a1a1aa;
+  --theme-border: #27272a;
+  --theme-accent: #a3e635;
+  --theme-accent-hover: #bef264;
+  --theme-accent-soft: #142900;
+  --theme-accent-fg: #09090b;
   --theme-danger: #ff7770;
-  --theme-danger-soft: #3a2020;
+  --theme-danger-soft: #2b1313;
   --theme-danger-fill: #a6322b;
   --theme-danger-hover: #862720;
-  --theme-success: #79d99b;
-  --theme-success-soft: #1c3325;
-  --theme-warning: #f0c36b;
-  --theme-warning-soft: #382f1d;
-  --theme-info: #8bc9ed;
-  --theme-info-soft: #1e303c;
+  --theme-success: #a3e635;
+  --theme-success-soft: #142900;
+  --theme-warning: #facc15;
+  --theme-warning-soft: #2e2608;
+  --theme-info: #38bdf8;
+  --theme-info-soft: #082f49;
 
   /* Elevation shadows (dark) */
   --shadow-card:
-    0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px -1px rgb(0 0 0 / 0.18);
+    0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.25);
   --shadow-float:
-    0 4px 20px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.28);
+    0 4px 20px -2px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.35);
   --shadow-sheet:
-    0 -2px 24px -4px rgb(0 0 0 / 0.45), 0 -1px 6px -1px rgb(0 0 0 / 0.3);
+    0 -2px 24px -4px rgb(0 0 0 / 0.55), 0 -1px 6px -1px rgb(0 0 0 / 0.4);
   --shadow-modal:
-    0 20px 60px -8px rgb(0 0 0 / 0.55), 0 8px 20px -4px rgb(0 0 0 / 0.4);
+    0 20px 60px -8px rgb(0 0 0 / 0.65), 0 8px 20px -4px rgb(0 0 0 / 0.45);
 }
 
 * {
@@ -141,7 +144,7 @@ a {
 }
 
 ::selection {
-  color: var(--theme-background);
+  color: var(--theme-accent-fg);
   background: var(--theme-accent);
 }
 

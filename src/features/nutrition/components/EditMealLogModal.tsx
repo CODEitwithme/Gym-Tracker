@@ -201,7 +201,7 @@ function EditMealLogModal({
                 onClick={() => setMealType(type)}
                 className={`flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
                   mealType === type
-                    ? 'border-accent bg-accent text-white'
+                    ? 'border-accent bg-accent text-accent-fg'
                     : 'border-line bg-panel text-ink hover:bg-hover'
                 }`}
               >

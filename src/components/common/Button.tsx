@@ -1,6 +1,7 @@
 import { LoaderCircle } from 'lucide-react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 
 export type ButtonVariant =
   | 'primary'
@@ -21,7 +22,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'border border-transparent bg-accent text-surface hover:bg-accent-hover active:bg-accent-hover disabled:bg-accent/60',
+    'border border-transparent bg-accent text-accent-fg hover:bg-accent-hover active:bg-accent-hover disabled:bg-accent/60',
   secondary:
     'border border-transparent bg-hover text-ink hover:bg-line active:bg-line disabled:text-muted/60',
   outline:
@@ -49,25 +50,36 @@ function Button({
   children,
   ...props
 }: ButtonProps) {
-  const isDisabled = disabled || loading
+  const shouldReduceMotion = useReducedMotion()
+  const isDisabled = Boolean(disabled || loading)
+
   const classes = [
-    'inline-flex items-center justify-center font-semibold',
-    'transition-all duration-100 ease-out',
-    'active:scale-[0.96]',
+    'inline-flex items-center justify-center font-semibold cursor-pointer select-none',
+    'transition-colors duration-150 ease-out',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-    'disabled:cursor-not-allowed disabled:active:scale-100',
+    'disabled:cursor-not-allowed disabled:opacity-60',
     variantClasses[variant],
     sizeClasses[size],
     className,
   ].join(' ')
 
   return (
-    <button
-      {...props}
+    <motion.button
+      {...(props as any)}
       type={type}
       className={classes}
       disabled={isDisabled}
       aria-busy={loading || undefined}
+      whileTap={
+        isDisabled || shouldReduceMotion
+          ? undefined
+          : { scale: 0.97, transition: { duration: 0.08 } }
+      }
+      whileHover={
+        isDisabled || shouldReduceMotion
+          ? undefined
+          : { filter: 'brightness(1.02)' }
+      }
     >
       {loading ? (
         <LoaderCircle aria-hidden="true" className="animate-spin" size={16} />
@@ -75,7 +87,7 @@ function Button({
         Icon && <Icon aria-hidden="true" size={16} />
       )}
       {children}
-    </button>
+    </motion.button>
   )
 }
 

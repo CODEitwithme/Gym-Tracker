@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from 'lucide-react'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import type { ExerciseSet } from '../types'
 import type { PreviousPerformance, WorkoutExerciseDetails } from '../workoutService'
 import { Button, Card, Input } from '../../../components/common'
 import Sheet from '../../../components/common/Sheet'
+import { springTactile, springSmooth } from '../../../lib/motion'
 
 type WorkoutExerciseCardProps = {
   details: WorkoutExerciseDetails
@@ -41,6 +43,7 @@ function SetEditor({
   onRemove: (id: string) => Promise<void>
   onDirtyChange: (key: string, dirty: boolean) => void
 }) {
+  const shouldReduceMotion = useReducedMotion()
   const [weight, setWeight] = useState(String(set.weightKg))
   const [reps, setReps] = useState(String(set.reps))
   const [setNumber, setSetNumber] = useState(String(set.setNumber))
@@ -95,7 +98,16 @@ function SetEditor({
   }
 
   return (
-    <div
+    <motion.div
+      layout="position"
+      initial={shouldReduceMotion ? false : { opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={
+        shouldReduceMotion
+          ? { opacity: 0 }
+          : { opacity: 0, height: 0, transition: { duration: 0.15 } }
+      }
+      transition={springSmooth}
       className={`px-3 py-3 last:pb-4 transition-colors duration-200 ${
         set.completed ? 'bg-success-soft/60' : ''
       }`}
@@ -143,8 +155,9 @@ function SetEditor({
             onDirtyChange(set.id, true)
           }}
         />
-        {/* Complete toggle */}
-        <button
+
+        {/* Tactile complete toggle with Motion spring feedback */}
+        <motion.button
           type="button"
           aria-label={
             set.completed
@@ -154,18 +167,46 @@ function SetEditor({
           aria-pressed={set.completed}
           disabled={saving || dirty || completing}
           onClick={() => void handleToggle()}
+          whileTap={
+            saving || dirty || completing || shouldReduceMotion
+              ? undefined
+              : { scale: 0.88 }
+          }
           className={[
-            'mb-0.5 flex size-11 items-center justify-center rounded-xl border transition-all duration-200',
+            'mb-0.5 flex size-11 cursor-pointer items-center justify-center rounded-xl border select-none transition-colors duration-150',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            completing ? 'animate-set-complete' : '',
             set.completed
               ? 'border-success bg-success text-surface shadow-sm'
               : 'border-line text-muted hover:border-success/50 hover:bg-success-soft hover:text-success',
           ].join(' ')}
         >
-          <Check aria-hidden="true" size={17} />
-        </button>
+          <AnimatePresence mode="wait" initial={false}>
+            {set.completed ? (
+              <motion.span
+                key="checked"
+                initial={shouldReduceMotion ? false : { scale: 0.4, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.4, opacity: 0 }}
+                transition={springTactile}
+                className="flex items-center justify-center"
+              >
+                <Check aria-hidden="true" size={18} strokeWidth={2.8} />
+              </motion.span>
+            ) : (
+              <motion.span
+                key="unchecked"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.1 }}
+                className="flex items-center justify-center"
+              >
+                <Check aria-hidden="true" size={17} />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
       </div>
 
       {error && (
@@ -176,7 +217,12 @@ function SetEditor({
 
       <div className="mt-2 flex min-h-9 justify-end gap-2">
         {dirty && (
-          <Button size="small" variant="secondary" disabled={saving} onClick={() => void save()}>
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={saving}
+            onClick={() => void save()}
+          >
             Save set
           </Button>
         )}
@@ -244,7 +290,7 @@ function SetEditor({
           The record will be soft deleted.
         </p>
       </Sheet>
-    </div>
+    </motion.div>
   )
 }
 
@@ -262,6 +308,7 @@ function WorkoutExerciseCard({
   onRemoveSet,
   onDirtyChange,
 }: WorkoutExerciseCardProps) {
+  const shouldReduceMotion = useReducedMotion()
   const { workoutExercise, sets } = details
   const [notes, setNotes] = useState(workoutExercise.notes)
   const [notesDirty, setNotesDirty] = useState(false)
@@ -285,24 +332,26 @@ function WorkoutExerciseCard({
       title={workoutExercise.exerciseNameSnapshot}
       actions={
         <div className="flex gap-1">
-          <button
+          <motion.button
             type="button"
             aria-label={`Move ${workoutExercise.exerciseNameSnapshot} up`}
             disabled={position === 0 || saving}
             onClick={() => void onMove(workoutExercise.id, -1)}
-            className="flex size-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40 active:scale-90"
+            whileTap={shouldReduceMotion ? undefined : { scale: 0.88 }}
+            className="flex size-10 cursor-pointer items-center justify-center rounded-xl text-muted transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ArrowUp aria-hidden="true" size={16} />
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             aria-label={`Move ${workoutExercise.exerciseNameSnapshot} down`}
             disabled={position === count - 1 || saving}
             onClick={() => void onMove(workoutExercise.id, 1)}
-            className="flex size-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40 active:scale-90"
+            whileTap={shouldReduceMotion ? undefined : { scale: 0.88 }}
+            className="flex size-10 cursor-pointer items-center justify-center rounded-xl text-muted transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ArrowDown aria-hidden="true" size={16} />
-          </button>
+          </motion.button>
         </div>
       }
     >
@@ -352,20 +401,22 @@ function WorkoutExerciseCard({
           </Button>
         </div>
 
-        {/* Set rows */}
+        {/* Set rows with smooth layout & exit transitions */}
         {sets.length ? (
           <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-            {sets.map((set) => (
-              <SetEditor
-                key={set.id}
-                set={set}
-                saving={saving}
-                onSave={onSaveSet}
-                onToggle={onToggleSet}
-                onRemove={onRemoveSet}
-                onDirtyChange={onDirtyChange}
-              />
-            ))}
+            <AnimatePresence initial={false}>
+              {sets.map((set) => (
+                <SetEditor
+                  key={set.id}
+                  set={set}
+                  saving={saving}
+                  onSave={onSaveSet}
+                  onToggle={onToggleSet}
+                  onRemove={onRemoveSet}
+                  onDirtyChange={onDirtyChange}
+                />
+              ))}
+            </AnimatePresence>
           </div>
         ) : (
           <p className="text-sm text-muted">No sets yet. Add your first set.</p>
@@ -398,7 +449,12 @@ function WorkoutExerciseCard({
           )}
           {notesDirty && (
             <div className="flex justify-end">
-              <Button size="small" variant="secondary" disabled={saving} onClick={() => void saveNotes()}>
+              <Button
+                size="small"
+                variant="secondary"
+                disabled={saving}
+                onClick={() => void saveNotes()}
+              >
                 Save notes
               </Button>
             </div>

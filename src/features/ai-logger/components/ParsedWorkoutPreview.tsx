@@ -297,7 +297,7 @@ export function ParsedWorkoutPreview({
                         onClick={() => updateItem(index, 'unit', 'kg')}
                         className={`flex-1 rounded-md text-xs font-semibold transition-colors ${
                           item.unit === 'kg'
-                            ? 'bg-accent text-surface'
+                            ? 'bg-accent text-accent-fg'
                             : 'text-muted hover:text-ink'
                         }`}
                       >
@@ -309,7 +309,7 @@ export function ParsedWorkoutPreview({
                         onClick={() => updateItem(index, 'unit', 'lbs')}
                         className={`flex-1 rounded-md text-xs font-semibold transition-colors ${
                           item.unit === 'lbs'
-                            ? 'bg-accent text-surface'
+                            ? 'bg-accent text-accent-fg'
                             : 'text-muted hover:text-ink'
                         }`}
                       >

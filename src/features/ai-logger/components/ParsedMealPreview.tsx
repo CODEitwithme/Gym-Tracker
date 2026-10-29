@@ -383,7 +383,7 @@ export function ParsedMealPreview({
                           onClick={() => updateItem(index, 'mealType', type)}
                           className={`rounded-md py-1.5 text-xs font-semibold transition-colors ${
                             item.mealType === type
-                              ? 'bg-accent text-surface'
+                              ? 'bg-accent text-accent-fg'
                               : 'text-muted hover:text-ink'
                           }`}
                         >

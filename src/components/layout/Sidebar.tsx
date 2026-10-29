@@ -6,7 +6,7 @@ function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-line bg-panel px-5 py-7 lg:flex">
       <Link to="/" className="mb-10 flex items-center gap-3 px-2 text-ink">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-white">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-fg">
           <Dumbbell aria-hidden="true" size={20} />
         </span>
         <span className="text-lg font-semibold tracking-tight">Gym Tracker</span>

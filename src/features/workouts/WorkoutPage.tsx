@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Dumbbell, Play } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
+import { springSmooth } from '../../lib/motion'
 import {
   loadActiveWorkoutThunk,
   startWorkoutThunk,
@@ -23,6 +25,7 @@ function formatDuration(seconds: number | null): string {
 function WorkoutPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const shouldReduceMotion = useReducedMotion()
   const { activeWorkoutId, status, error } = useAppSelector(
     (state) => state.workoutUi,
   )
@@ -96,7 +99,7 @@ function WorkoutPage() {
       </div>
 
       {error && (
-        <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+        <p role="alert" className="mb-5 rounded-xl bg-danger-soft p-4 text-sm text-danger">
           {error}
         </p>
       )}
@@ -143,7 +146,7 @@ function WorkoutPage() {
         ) : historyError ? (
           <div
             role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+            className="rounded-xl border border-danger-soft bg-danger-soft p-4 text-sm text-danger"
           >
             <p>{historyError}</p>
             <Button
@@ -166,7 +169,11 @@ function WorkoutPage() {
         ) : (
           <div className="space-y-3">
             {history.map((summary) => (
-              <WorkoutHistoryCard key={summary.session.id} summary={summary} />
+              <WorkoutHistoryCard
+                key={summary.session.id}
+                summary={summary}
+                shouldReduceMotion={shouldReduceMotion}
+              />
             ))}
           </div>
         )}
@@ -175,34 +182,46 @@ function WorkoutPage() {
   )
 }
 
-function WorkoutHistoryCard({ summary }: { summary: WorkoutSummary }) {
+function WorkoutHistoryCard({
+  summary,
+  shouldReduceMotion,
+}: {
+  summary: WorkoutSummary
+  shouldReduceMotion: boolean | null
+}) {
   const { session } = summary
   return (
-    <Link
-      to={`/workouts/${session.id}`}
-      className="block rounded-2xl border border-line bg-panel p-4 shadow-sm shadow-ink/[0.02] transition-colors hover:border-accent/30 hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-5"
+    <motion.div
+      whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+      whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
+      transition={springSmooth}
     >
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h3 className="font-semibold text-ink">{session.name}</h3>
-          <p className="mt-1 text-sm text-muted">
-            {new Intl.DateTimeFormat(undefined, {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }).format(new Date(session.startedAt))}
-          </p>
+      <Link
+        to={`/workouts/${session.id}`}
+        className="block rounded-2xl border border-line bg-panel p-4 shadow-sm shadow-ink/[0.02] transition-colors hover:border-accent/40 hover:bg-hover/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-5"
+      >
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h3 className="font-semibold text-ink">{session.name}</h3>
+            <p className="mt-1 text-sm text-muted">
+              {new Intl.DateTimeFormat(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              }).format(new Date(session.startedAt))}
+            </p>
+          </div>
+          <span className="text-sm font-medium text-accent">View details →</span>
         </div>
-        <span className="text-sm font-medium text-accent">View details →</span>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3 text-xs sm:max-w-md sm:text-sm">
-        <SummaryMetric label="Duration" value={formatDuration(summary.durationSeconds)} />
-        <SummaryMetric label="Exercises" value={String(summary.exerciseCount)} />
-        <SummaryMetric
-          label="Sets"
-          value={`${summary.completedSetCount}/${summary.setCount} done`}
-        />
-      </div>
-    </Link>
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3 text-xs sm:max-w-md sm:text-sm">
+          <SummaryMetric label="Duration" value={formatDuration(summary.durationSeconds)} />
+          <SummaryMetric label="Exercises" value={String(summary.exerciseCount)} />
+          <SummaryMetric
+            label="Sets"
+            value={`${summary.completedSetCount}/${summary.setCount} done`}
+          />
+        </div>
+      </Link>
+    </motion.div>
   )
 }
 

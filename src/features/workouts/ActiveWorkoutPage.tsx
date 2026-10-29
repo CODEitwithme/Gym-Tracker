@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
 import { Check, Clock3, Flag, Plus, RotateCcw } from 'lucide-react'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState, Input, Modal } from '../../components/common'
 import Sheet from '../../components/common/Sheet'
@@ -8,6 +9,7 @@ import PageContainer from '../../components/layout/PageContainer'
 import type { Exercise, ExerciseSet } from './types'
 import ExercisePickerModal from './components/ExercisePickerModal'
 import WorkoutExerciseCard from './components/WorkoutExerciseCard'
+import { springSmooth, listItemVariants } from '../../lib/motion'
 import {
   addExerciseToWorkout,
   createAndAddCustomExercise,
@@ -44,6 +46,7 @@ function formatElapsed(startedAt: string, now: number): string {
 function ActiveWorkoutPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const shouldReduceMotion = useReducedMotion()
   const reduxError = useAppSelector((state) => state.workoutUi.error)
   const [details, setDetails] = useState<WorkoutDetails | null>(null)
   const [previousPerformance, setPreviousPerformance] = useState<
@@ -344,10 +347,15 @@ function ActiveWorkoutPage() {
 
   const hasPendingChanges = nameDirty || notesDirty || pendingEdits.length > 0
 
+  const progressPercent =
+    totals.totalSets > 0
+      ? Math.round((totals.completedSets / totals.totalSets) * 100)
+      : 0
+
   return (
     <PageContainer>
       {/* ── Workout header ──────────────────────────────── */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex-1">
           {/* Status + timer row */}
           <div className="mb-3 flex items-center gap-2.5">
@@ -393,6 +401,24 @@ function ActiveWorkoutPage() {
         </Button>
       </div>
 
+      {/* ── Dynamic workout progress bar ─────────────────── */}
+      <div className="mb-6">
+        <div className="mb-1.5 flex justify-between text-xs text-muted">
+          <span>Workout progress</span>
+          <span className="font-semibold text-ink tabular-nums">
+            {totals.completedSets} / {totals.totalSets} sets ({progressPercent}%)
+          </span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line/60">
+          <motion.div
+            className="h-full rounded-full bg-accent"
+            initial={shouldReduceMotion ? false : { width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          />
+        </div>
+      </div>
+
       {/* ── Inline alerts ───────────────────────────────── */}
       {error && (
         <div
@@ -420,11 +446,19 @@ function ActiveWorkoutPage() {
         </div>
       )}
 
-      {savedMessage && (
-        <p role="status" className="mb-4 animate-toast-in text-sm text-success">
-          {savedMessage}
-        </p>
-      )}
+      <AnimatePresence>
+        {savedMessage && (
+          <motion.p
+            role="status"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-4 text-sm font-medium text-success"
+          >
+            {savedMessage}
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {/* ── Workout notes ───────────────────────────────── */}
       <Card
@@ -490,35 +524,46 @@ function ActiveWorkoutPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {details.exercises.map((item, index) => (
-              <WorkoutExerciseCard
-                key={item.workoutExercise.id}
-                details={item}
-                position={index}
-                count={details.exercises.length}
-                previous={previousPerformance[item.workoutExercise.id]}
-                saving={saving}
-                onSaveNotes={async (id, value) => {
-                  await runSaveOrThrow(
-                    () => saveExerciseNotes(id, value),
-                    'Exercise notes saved.',
-                  )
-                }}
-                onMove={async (id, direction) => {
-                  await runSave(
-                    () => moveWorkoutExercise(details.session.id, id, direction),
-                    'Exercise order saved.',
-                  )
-                }}
-                onAddSet={addSet}
-                onSaveSet={async (id, changes) => {
-                  await runSaveOrThrow(() => saveSet(id, changes), 'Set saved.')
-                }}
-                onToggleSet={toggleSet}
-                onRemoveSet={removeSet}
-                onDirtyChange={markPendingEdit}
-              />
-            ))}
+            <AnimatePresence initial={false}>
+              {details.exercises.map((item, index) => (
+                <motion.div
+                  key={item.workoutExercise.id}
+                  layout="position"
+                  variants={listItemVariants}
+                  initial={shouldReduceMotion ? false : 'hidden'}
+                  animate="visible"
+                  exit="exit"
+                  transition={springSmooth}
+                >
+                  <WorkoutExerciseCard
+                    details={item}
+                    position={index}
+                    count={details.exercises.length}
+                    previous={previousPerformance[item.workoutExercise.id]}
+                    saving={saving}
+                    onSaveNotes={async (id, value) => {
+                      await runSaveOrThrow(
+                        () => saveExerciseNotes(id, value),
+                        'Exercise notes saved.',
+                      )
+                    }}
+                    onMove={async (id, direction) => {
+                      await runSave(
+                        () => moveWorkoutExercise(details.session.id, id, direction),
+                        'Exercise order saved.',
+                      )
+                    }}
+                    onAddSet={addSet}
+                    onSaveSet={async (id, changes) => {
+                      await runSaveOrThrow(() => saveSet(id, changes), 'Set saved.')
+                    }}
+                    onToggleSet={toggleSet}
+                    onRemoveSet={removeSet}
+                    onDirtyChange={markPendingEdit}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </section>

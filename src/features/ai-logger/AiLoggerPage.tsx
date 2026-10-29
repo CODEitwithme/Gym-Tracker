@@ -221,7 +221,7 @@ export function AiLoggerPage() {
           onClick={() => dispatch(setLoggerMode('workout'))}
           className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
             mode === 'workout'
-              ? 'bg-accent text-surface shadow-sm'
+              ? 'bg-accent text-accent-fg shadow-sm'
               : 'text-muted hover:text-ink hover:bg-hover'
           }`}
         >
@@ -233,7 +233,7 @@ export function AiLoggerPage() {
           onClick={() => dispatch(setLoggerMode('nutrition'))}
           className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
             mode === 'nutrition'
-              ? 'bg-accent text-surface shadow-sm'
+              ? 'bg-accent text-accent-fg shadow-sm'
               : 'text-muted hover:text-ink hover:bg-hover'
           }`}
         >

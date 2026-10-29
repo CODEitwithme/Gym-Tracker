@@ -12,7 +12,7 @@ export function SettingsNav() {
         className={({ isActive }) =>
           `flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
             isActive
-              ? 'bg-accent text-surface shadow-sm'
+              ? 'bg-accent text-accent-fg shadow-sm'
               : 'text-muted hover:bg-hover hover:text-ink'
           }`
         }
@@ -25,7 +25,7 @@ export function SettingsNav() {
         className={({ isActive }) =>
           `flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
             isActive
-              ? 'bg-accent text-surface shadow-sm'
+              ? 'bg-accent text-accent-fg shadow-sm'
               : 'text-muted hover:bg-hover hover:text-ink'
           }`
         }

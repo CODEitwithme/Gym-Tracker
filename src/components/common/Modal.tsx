@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import type { MouseEvent, ReactNode } from 'react'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
+import { backdropVariants, modalVariants } from '../../lib/motion'
 
 type ModalProps = {
   open: boolean
@@ -28,24 +29,15 @@ function Modal({
   const modalId = useId()
   const onCloseRef = useRef(onClose)
   const closeBlockedRef = useRef(closeBlocked)
-  const [closing, setClosing] = useState(false)
-  const [rendered, setRendered] = useState(open)
-
-  useEffect(() => { onCloseRef.current = onClose }, [onClose])
-  useEffect(() => { closeBlockedRef.current = closeBlocked }, [closeBlocked])
-
-  /* Animate out before unmounting */
-  useEffect(() => {
-    if (open) { setRendered(true); setClosing(false) }
-  }, [open])
+  const shouldReduceMotion = useReducedMotion()
 
   useEffect(() => {
-    if (!open && rendered) {
-      setClosing(true)
-      const t = setTimeout(() => { setClosing(false); setRendered(false) }, 200)
-      return () => clearTimeout(t)
-    }
-  }, [open, rendered])
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    closeBlockedRef.current = closeBlocked
+  }, [closeBlocked])
 
   useEffect(() => {
     if (!open) return
@@ -111,7 +103,7 @@ function Modal({
     }
   }, [modalId, open])
 
-  if (!rendered || typeof document === 'undefined') return null
+  if (typeof document === 'undefined') return null
 
   const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
     if (
@@ -123,42 +115,66 @@ function Modal({
     }
   }
 
+  const customModalVariants = shouldReduceMotion
+    ? {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0.15 } },
+        exit: { opacity: 0, transition: { duration: 0.1 } },
+      }
+    : modalVariants
+
   return createPortal(
-    <div
-      className={`fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-5 ${closing ? 'animate-backdrop-out' : 'animate-backdrop-in'} bg-ink/50 backdrop-blur-[2px]`}
-      onClick={handleBackdropClick}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        style={{ boxShadow: 'var(--shadow-modal)' }}
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-panel outline-none sm:max-w-lg sm:rounded-3xl ${closing ? 'animate-sheet-out' : 'animate-sheet-in'}`}
-      >
-        <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
-          <h2 id={titleId} className="text-base font-semibold text-ink">
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={() => {
-              if (!closeBlocked) onCloseRef.current()
-            }}
-            disabled={closeBlocked}
-            aria-label="Close dialog"
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key={modalId}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-5 bg-ink/50 backdrop-blur-[2px]"
+          onClick={handleBackdropClick}
+        >
+          <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
+            variants={customModalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            style={{ boxShadow: 'var(--shadow-modal)' }}
+            className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-panel outline-none sm:max-w-lg sm:rounded-3xl"
           >
-            <X aria-hidden="true" size={18} />
-          </button>
-        </div>
-        <div className="px-5 py-5 sm:px-6">{children}</div>
-        {footer != null && (
-          <div className="border-t border-line px-5 py-4 sm:px-6">{footer}</div>
-        )}
-      </div>
-    </div>,
+            <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+              <h2 id={titleId} className="text-base font-semibold text-ink">
+                {title}
+              </h2>
+              <motion.button
+                type="button"
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+                onClick={() => {
+                  if (!closeBlocked) onCloseRef.current()
+                }}
+                disabled={closeBlocked}
+                aria-label="Close dialog"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <X aria-hidden="true" size={18} />
+              </motion.button>
+            </div>
+            <div className="px-5 py-5 sm:px-6">{children}</div>
+            {footer != null && (
+              <div className="border-t border-line px-5 py-4 pb-safe-4 sm:px-6">
+                {footer}
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body,
   )
 }

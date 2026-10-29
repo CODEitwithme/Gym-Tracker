@@ -191,7 +191,7 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
       {/* Header bar */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-white shadow-sm">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-fg shadow-sm">
             <Bot size={20} aria-hidden="true" />
           </span>
           <div>
@@ -356,7 +356,7 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
               }}
               className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 mode === 'workout'
-                  ? 'bg-accent text-surface shadow-sm'
+                  ? 'bg-accent text-accent-fg shadow-sm'
                   : 'text-muted hover:text-ink hover:bg-hover'
               }`}
             >
@@ -371,7 +371,7 @@ export function DashboardAiLogger({ onActivityLogged }: DashboardAiLoggerProps) 
               }}
               className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 mode === 'nutrition'
-                  ? 'bg-accent text-surface shadow-sm'
+                  ? 'bg-accent text-accent-fg shadow-sm'
                   : 'text-muted hover:text-ink hover:bg-hover'
               }`}
             >

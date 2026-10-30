@@ -38,10 +38,16 @@ export function PostWorkoutHeroCard({ onParsedReady }: PostWorkoutHeroCardProps)
   const [parsing, setParsing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { isListening, isSupported, toggleListening, stopListening } =
-    useVoiceDictation((transcript) => {
-      setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript))
-    })
+  const {
+    isListening,
+    isSupported,
+    error: voiceError,
+    toggleListening,
+    stopListening,
+    clearError: clearVoiceError,
+  } = useVoiceDictation((transcript) => {
+    setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript))
+  })
 
   const handleChipClick = (prefix: string) => {
     setPrompt((prev) => {
@@ -56,6 +62,7 @@ export function PostWorkoutHeroCard({ onParsedReady }: PostWorkoutHeroCardProps)
     if (!trimmed || parsing) return
 
     stopListening()
+    clearVoiceError()
     setParsing(true)
     setError(null)
 
@@ -101,29 +108,34 @@ export function PostWorkoutHeroCard({ onParsedReady }: PostWorkoutHeroCardProps)
             </div>
           </div>
 
-          {isSupported && (
-            <button
-              type="button"
-              onClick={toggleListening}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
-                isListening
-                  ? 'bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/50'
-                  : 'border border-line bg-surface text-ink hover:border-accent hover:text-accent'
-              }`}
-            >
-              {isListening ? (
-                <>
-                  <MicOff className="size-3.5" />
-                  Listening... Tap to Stop
-                </>
-              ) : (
-                <>
-                  <Mic className="size-3.5 text-accent" />
-                  Voice Dictate
-                </>
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={toggleListening}
+            title={
+              !isSupported
+                ? 'Voice dictation is not supported in this browser. Please use Chrome, Edge, Safari, or your device keyboard dictation.'
+                : isListening
+                  ? 'Listening... Click to stop'
+                  : 'Click to dictate your workout by voice'
+            }
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+              isListening
+                ? 'bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/50'
+                : 'border border-line bg-surface text-ink hover:border-accent hover:text-accent'
+            }`}
+          >
+            {isListening ? (
+              <>
+                <MicOff className="size-3.5" />
+                Listening... Tap to Stop
+              </>
+            ) : (
+              <>
+                <Mic className="size-3.5 text-accent" />
+                Voice Dictate
+              </>
+            )}
+          </button>
         </div>
 
         {/* Quick Time Presets */}
@@ -141,10 +153,23 @@ export function PostWorkoutHeroCard({ onParsedReady }: PostWorkoutHeroCardProps)
         </div>
 
         {/* Error message */}
-        {error && (
-          <p role="alert" className="rounded-lg bg-red-50 p-2.5 text-xs text-red-700">
-            {error}
-          </p>
+        {(error || voiceError) && (
+          <div
+            role="alert"
+            className="flex items-start justify-between gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-200"
+          >
+            <span>{voiceError || error}</span>
+            {voiceError && (
+              <button
+                type="button"
+                onClick={clearVoiceError}
+                className="shrink-0 text-red-300 hover:text-white"
+                aria-label="Dismiss error"
+              >
+                &times;
+              </button>
+            )}
+          </div>
         )}
 
         {/* Input box */}

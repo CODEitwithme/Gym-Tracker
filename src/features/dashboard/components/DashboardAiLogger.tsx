@@ -7,6 +7,8 @@ import {
   CheckCircle,
   Dumbbell,
   Key,
+  Mic,
+  MicOff,
   RotateCcw,
   Sparkles,
   WifiOff,
@@ -23,6 +25,7 @@ import {
 } from '../../ai-logger/aiLoggerService'
 import { ParsedMealPreview } from '../../ai-logger/components/ParsedMealPreview'
 import { ParsedWorkoutPreview } from '../../ai-logger/components/ParsedWorkoutPreview'
+import { useVoiceDictation } from '../../workouts/useVoiceDictation'
 import type {
   AiLoggerMode,
   ConfirmedMeal,
@@ -69,6 +72,17 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const {
+    isListening,
+    isSupported,
+    error: voiceError,
+    toggleListening,
+    stopListening,
+    clearError: clearVoiceError,
+  } = useVoiceDictation((transcript) => {
+    setInputText((prev) => (prev ? `${prev} ${transcript}` : transcript))
+  })
+
   useEffect(() => {
     if (!isConfigured) return
 
@@ -103,6 +117,8 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
     const trimmed = inputText.trim()
     if (!trimmed || parsing || saving) return
 
+    stopListening()
+    clearVoiceError()
     setParsing(true)
     setParseError(null)
     setSaveSuccess(null)
@@ -282,8 +298,8 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
         </div>
       )}
 
-      {/* Parse Error */}
-      {parseError && (
+      {/* Parse or Voice Error */}
+      {(parseError || voiceError) && (
         <div
           role="alert"
           className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-200"
@@ -294,14 +310,25 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
                 aria-hidden="true"
                 className="size-4 shrink-0 text-red-400"
               />
-              <span>{parseError}</span>
+              <span>{voiceError || parseError}</span>
             </div>
-            {!hasKey && (
-              <Link to="/settings/ai">
-                <Button size="small" variant="outline" icon={Key}>
-                  Set API Key
-                </Button>
-              </Link>
+            {voiceError ? (
+              <button
+                type="button"
+                onClick={clearVoiceError}
+                className="shrink-0 text-xs font-semibold text-red-300 hover:text-white"
+                aria-label="Dismiss error"
+              >
+                &times;
+              </button>
+            ) : (
+              !hasKey && (
+                <Link to="/settings/ai">
+                  <Button size="small" variant="outline" icon={Key}>
+                    Set API Key
+                  </Button>
+                </Link>
+              )
             )}
           </div>
         </div>
@@ -429,6 +456,34 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
             </div>
 
             <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={toggleListening}
+                title={
+                  !isSupported
+                    ? 'Voice dictation is not supported in this browser. Please use Chrome, Edge, Safari, or device keyboard dictation.'
+                    : isListening
+                      ? 'Listening... Click to stop'
+                      : 'Dictate with your microphone'
+                }
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                  isListening
+                    ? 'bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/50'
+                    : 'border border-line bg-surface text-ink hover:border-accent hover:text-accent'
+                }`}
+              >
+                {isListening ? (
+                  <>
+                    <MicOff size={13} aria-hidden="true" />
+                    <span>Listening…</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic size={13} className="text-accent" aria-hidden="true" />
+                    <span>Voice</span>
+                  </>
+                )}
+              </button>
               {inputText.trim() && (
                 <Button
                   type="button"

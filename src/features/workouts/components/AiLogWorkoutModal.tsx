@@ -52,16 +52,23 @@ export function AiLogWorkoutModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { isListening, isSupported, toggleListening, stopListening } =
-    useVoiceDictation((transcript) => {
-      setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript))
-    })
+  const {
+    isListening,
+    isSupported,
+    error: voiceError,
+    toggleListening,
+    stopListening,
+    clearError: clearVoiceError,
+  } = useVoiceDictation((transcript) => {
+    setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript))
+  })
 
   useEffect(() => {
     if (!open) {
       stopListening()
       return
     }
+    clearVoiceError()
     setPrompt(initialPrompt)
     setParsedWorkout(initialParsedWorkout)
     setSessionName(initialSessionName)
@@ -80,10 +87,12 @@ export function AiLogWorkoutModal({
     initialStartTime,
     initialEndTime,
     stopListening,
+    clearVoiceError,
   ])
 
   const handleReset = () => {
     stopListening()
+    clearVoiceError()
     setPrompt('')
     setParsedWorkout(null)
     setError(null)
@@ -188,10 +197,23 @@ export function AiLogWorkoutModal({
       }
     >
       <div className="space-y-4">
-        {error && (
-          <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">
-            {error}
-          </p>
+        {(error || voiceError) && (
+          <div
+            role="alert"
+            className="flex items-start justify-between gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300"
+          >
+            <span>{voiceError || error}</span>
+            {voiceError && (
+              <button
+                type="button"
+                onClick={clearVoiceError}
+                className="shrink-0 text-red-400 hover:text-red-200"
+                aria-label="Dismiss voice error"
+              >
+                &times;
+              </button>
+            )}
+          </div>
         )}
 
         {parsedWorkout ? (
@@ -266,29 +288,34 @@ export function AiLogWorkoutModal({
                 >
                   Tell us when & what you worked out
                 </label>
-                {isSupported && (
-                  <button
-                    type="button"
-                    onClick={toggleListening}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                      isListening
-                        ? 'bg-rose-500 text-white animate-pulse'
-                        : 'bg-accent-soft text-accent hover:bg-accent/20'
-                    }`}
-                  >
-                    {isListening ? (
-                      <>
-                        <MicOff className="size-3.5" />
-                        Listening... Stop
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="size-3.5" />
-                        Voice Dictation
-                      </>
-                    )}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  title={
+                    !isSupported
+                      ? 'Voice dictation is not supported in this browser. Please use Chrome, Edge, Safari, or your device keyboard dictation.'
+                      : isListening
+                        ? 'Listening... Click to stop'
+                        : 'Click to dictate your workout by voice'
+                  }
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                    isListening
+                      ? 'bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/50'
+                      : 'bg-accent-soft text-accent hover:bg-accent/20'
+                  }`}
+                >
+                  {isListening ? (
+                    <>
+                      <MicOff className="size-3.5" />
+                      Listening... Stop
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="size-3.5" />
+                      Voice Dictation
+                    </>
+                  )}
+                </button>
               </div>
 
               <textarea

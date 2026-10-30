@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Search, Sparkles } from 'lucide-react'
+import { Mic, MicOff, Plus, Search, Sparkles } from 'lucide-react'
 import { Badge, Button, Input, Modal } from '../../../components/common'
 import { formatLocalDate } from '../../../lib/dateTime'
 import { scaleNutrition } from '../../../lib/nutrition'
@@ -15,6 +15,7 @@ import {
   saveAiMeal,
 } from '../../ai-logger/aiLoggerService'
 import { ParsedMealPreview } from '../../ai-logger/components/ParsedMealPreview'
+import { useVoiceDictation } from '../../workouts/useVoiceDictation'
 import type { ConfirmedMeal, ParsedMeal } from '../../ai-logger/types'
 
 interface LogMealModalProps {
@@ -73,8 +74,24 @@ function LogMealModal({
   const [parsedMeal, setParsedMeal] = useState<ParsedMeal | null>(null)
   const [savingAi, setSavingAi] = useState(false)
 
+  const {
+    isListening,
+    isSupported,
+    error: voiceError,
+    toggleListening,
+    stopListening,
+    clearError: clearVoiceError,
+  } = useVoiceDictation((transcript) => {
+    setAiPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript))
+  })
+
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      stopListening()
+      return
+    }
+    stopListening()
+    clearVoiceError()
     let cancelled = false
 
     setActiveTab(initialTab)
@@ -117,7 +134,7 @@ function LogMealModal({
     return () => {
       cancelled = true
     }
-  }, [open, initialDate, initialMealType, initialTab])
+  }, [open, initialDate, initialMealType, initialTab, stopListening, clearVoiceError])
 
   const filteredMeals = useMemo(() => {
     const q = query.trim().toLocaleLowerCase()
@@ -197,6 +214,8 @@ function LogMealModal({
     const trimmed = aiPrompt.trim()
     if (!trimmed || parsingAi) return
 
+    stopListening()
+    clearVoiceError()
     setParsingAi(true)
     setError(null)
     try {
@@ -322,10 +341,23 @@ function LogMealModal({
         footer={renderFooter()}
       >
         <div className="space-y-4">
-          {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">
-              {error}
-            </p>
+          {(error || voiceError) && (
+            <div
+              role="alert"
+              className="flex items-start justify-between gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300"
+            >
+              <span>{voiceError || error}</span>
+              {voiceError && (
+                <button
+                  type="button"
+                  onClick={clearVoiceError}
+                  className="shrink-0 text-red-400 hover:text-red-200"
+                  aria-label="Dismiss voice error"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
           )}
 
           {/* Tab Selector */}
@@ -423,12 +455,42 @@ function LogMealModal({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label
-                    htmlFor="ai-meal-prompt"
-                    className="block text-sm font-medium text-ink"
-                  >
-                    Describe what you ate
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="ai-meal-prompt"
+                      className="block text-sm font-medium text-ink"
+                    >
+                      Describe what you ate
+                    </label>
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      title={
+                        !isSupported
+                          ? 'Voice dictation is not supported in this browser. Please use Chrome, Edge, Safari, or device keyboard dictation.'
+                          : isListening
+                            ? 'Listening... Click to stop'
+                            : 'Dictate meal with microphone'
+                      }
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                        isListening
+                          ? 'bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/50'
+                          : 'bg-accent-soft text-accent hover:bg-accent/20'
+                      }`}
+                    >
+                      {isListening ? (
+                        <>
+                          <MicOff className="size-3.5" />
+                          Listening... Stop
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="size-3.5" />
+                          Voice Dictation
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <textarea
                     id="ai-meal-prompt"
                     rows={4}

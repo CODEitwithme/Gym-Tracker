@@ -6,11 +6,14 @@ import {
   CheckCircle,
   Dumbbell,
   Key,
+  Mic,
+  MicOff,
   Send,
   Sparkles,
   WifiOff,
 } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
+import { useVoiceDictation } from '../workouts/useVoiceDictation'
 import { Badge, Button, Card, EmptyState } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
 import ParsedWorkoutPreview from './components/ParsedWorkoutPreview'
@@ -63,6 +66,17 @@ export function AiLoggerPage() {
   const [workerUnavailable, setWorkerUnavailable] = useState(!isConfigured)
   const conversationEndRef = useRef<HTMLDivElement>(null)
 
+  const {
+    isListening,
+    isSupported,
+    error: voiceError,
+    toggleListening,
+    stopListening,
+    clearError: clearVoiceError,
+  } = useVoiceDictation((transcript) => {
+    setMessageText((prev) => (prev ? `${prev} ${transcript}` : transcript))
+  })
+
   // Handle URL query ?mode=nutrition or ?mode=workout
   useEffect(() => {
     const urlMode = searchParams.get('mode')
@@ -112,6 +126,8 @@ export function AiLoggerPage() {
     const trimmed = messageText.trim()
     if (!trimmed || parsing || saving) return
 
+    stopListening()
+    clearVoiceError()
     dispatch(addUserMessage(trimmed))
     setMessageText('')
     dispatch(startParsing())
@@ -327,12 +343,22 @@ export function AiLoggerPage() {
         </div>
       )}
 
-      {(parseError || saveError) && (
+      {(parseError || saveError || voiceError) && (
         <div
           role="alert"
-          className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
+          className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
         >
-          {parseError || saveError}
+          <span>{voiceError || parseError || saveError}</span>
+          {voiceError && (
+            <button
+              type="button"
+              onClick={clearVoiceError}
+              className="shrink-0 text-red-300 hover:text-white"
+              aria-label="Dismiss error"
+            >
+              &times;
+            </button>
+          )}
         </div>
       )}
 
@@ -469,20 +495,50 @@ export function AiLoggerPage() {
                   {messageText.length}/2000 characters · Press Enter to send,
                   Shift+Enter for newline
                 </span>
-                <Button
-                  variant="primary"
-                  type="submit"
-                  loading={parsing}
-                  disabled={
-                    parsing ||
-                    saving ||
-                    !messageText.trim() ||
-                    messageText.length > 2000
-                  }
-                  icon={Send}
-                >
-                  Send to AI
-                </Button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    title={
+                      !isSupported
+                        ? 'Voice dictation is not supported in this browser. Please use Chrome, Edge, Safari, or device keyboard dictation.'
+                        : isListening
+                          ? 'Listening... Click to stop'
+                          : 'Dictate message with microphone'
+                    }
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                      isListening
+                        ? 'border-rose-500 bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/50'
+                        : 'border-line bg-surface text-ink hover:border-accent hover:text-accent'
+                    }`}
+                  >
+                    {isListening ? (
+                      <>
+                        <MicOff size={13} aria-hidden="true" />
+                        <span>Listening… Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic size={13} className="text-accent" aria-hidden="true" />
+                        <span>Voice Dictate</span>
+                      </>
+                    )}
+                  </button>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    loading={parsing}
+                    disabled={
+                      parsing ||
+                      saving ||
+                      !messageText.trim() ||
+                      messageText.length > 2000
+                    }
+                    icon={Send}
+                  >
+                    Send to AI
+                  </Button>
+                </div>
               </div>
             </form>
           </Card>

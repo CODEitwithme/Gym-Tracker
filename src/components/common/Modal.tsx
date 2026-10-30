@@ -132,7 +132,7 @@ function Modal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-5 bg-ink/50 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-5 bg-ink/40 backdrop-blur-sm"
           onClick={handleBackdropClick}
         >
           <motion.div
@@ -146,7 +146,7 @@ function Modal({
             animate="visible"
             exit="exit"
             style={{ boxShadow: 'var(--shadow-modal)' }}
-            className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-panel outline-none sm:max-w-lg sm:rounded-3xl"
+            className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel glass-strong outline-none sm:max-w-lg sm:rounded-3xl"
           >
             <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
               <h2 id={titleId} className="text-base font-semibold text-ink">

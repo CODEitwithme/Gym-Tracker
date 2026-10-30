@@ -105,7 +105,7 @@ function ActiveWorkoutBanner() {
           </span>
 
           <span className="flex flex-col items-start text-left leading-tight">
-            <span className="max-w-[140px] truncate text-[11px] font-medium text-surface/85">
+            <span className="max-w-[140px] truncate text-[11px] font-medium text-accent-fg/80">
               {effectiveName || 'Workout active'}
             </span>
             <time className="text-sm font-bold tabular-nums tracking-wide">

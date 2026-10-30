@@ -22,7 +22,7 @@ function Card({
       {...props}
       style={{ boxShadow: 'var(--shadow-card)', ...((props as { style?: React.CSSProperties }).style ?? {}) }}
       className={[
-        'rounded-2xl border border-line bg-panel',
+        'fx-lift rounded-2xl border border-line bg-panel',
         className,
       ].join(' ')}
     >

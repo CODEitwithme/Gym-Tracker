@@ -401,7 +401,7 @@ export function AiLoggerPage() {
                       <div
                         className={`rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
                           isUser
-                            ? 'bg-accent font-medium text-surface'
+                            ? 'bg-accent font-medium text-[var(--theme-background)]'
                             : 'border border-line bg-panel text-ink'
                         }`}
                       >

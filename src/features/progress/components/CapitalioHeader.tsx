@@ -65,7 +65,7 @@ export default function CapitalioHeader({
                 onClick={() => onPeriodChange(opt.key)}
                 className={`min-h-8 rounded-lg px-3 text-xs font-semibold transition-all ${
                   isSelected
-                    ? 'bg-ink text-surface shadow-xs dark:bg-lime-500 dark:text-zinc-950'
+                    ? 'bg-ink text-[var(--theme-background)] shadow-xs dark:bg-lime-500 dark:text-zinc-950'
                     : 'text-muted hover:text-ink'
                 }`}
               >
@@ -93,7 +93,7 @@ export default function CapitalioHeader({
                 onClick={() => onUnitChange(u)}
                 className={`min-h-8 rounded-lg px-2.5 text-xs font-bold uppercase transition-all ${
                   isSelected
-                    ? 'bg-ink text-surface shadow-xs dark:bg-lime-500 dark:text-zinc-950'
+                    ? 'bg-ink text-[var(--theme-background)] shadow-xs dark:bg-lime-500 dark:text-zinc-950'
                     : 'text-muted hover:text-ink'
                 }`}
               >

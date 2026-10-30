@@ -147,7 +147,7 @@ export default function DashboardPage() {
         type="button"
         onClick={() => setQuickLogOpen(true)}
         aria-label="Quick log with AI"
-        className="fixed bottom-20 right-4 sm:bottom-8 sm:right-8 z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-fg shadow-lg shadow-accent/25 transition-all hover:opacity-95 hover:shadow-accent/40 active:scale-95 focus-visible:outline-2 focus-visible:outline-accent"
+        className="fab-pulse fixed bottom-20 right-4 sm:bottom-8 sm:right-8 z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition-all hover:opacity-95 active:scale-95 focus-visible:outline-2 focus-visible:outline-accent"
       >
         <Sparkles size={18} aria-hidden="true" />
         <span className="font-medium">Quick Log</span>
@@ -232,7 +232,7 @@ function DashboardView({
             {formattedToday}
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-            {greeting} 👋
+            {greeting} <span className="emoji" aria-hidden="true">👋</span>
           </h1>
         </div>
 

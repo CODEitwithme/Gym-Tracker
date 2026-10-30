@@ -24,13 +24,13 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     'border border-transparent bg-accent text-accent-fg hover:bg-accent-hover active:bg-accent-hover disabled:bg-accent/60',
   secondary:
-    'border border-transparent bg-hover text-ink hover:bg-line active:bg-line disabled:text-muted/60',
+    'border border-transparent bg-hover text-ink hover:-translate-y-px hover:bg-line active:bg-line disabled:text-muted/60',
   outline:
-    'border border-line bg-panel text-ink hover:bg-hover active:bg-hover disabled:text-muted/60',
+    'border border-line bg-panel text-ink hover:-translate-y-px hover:border-accent/50 hover:bg-hover active:bg-hover disabled:text-muted/60',
   ghost:
     'border border-transparent bg-transparent text-muted hover:bg-hover hover:text-ink active:bg-hover disabled:text-muted/50',
   danger:
-    'border border-transparent bg-danger-fill text-white hover:bg-danger-hover active:bg-danger-hover disabled:bg-danger-fill/60',
+    'border border-transparent btn-fx btn-shine bg-danger-fill text-white hover:bg-danger-hover active:bg-danger-hover disabled:bg-danger-fill/60',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -55,7 +55,7 @@ function Button({
 
   const classes = [
     'inline-flex items-center justify-center font-semibold cursor-pointer select-none',
-    'transition-colors duration-150 ease-out',
+    'relative transition-[color,background-color,border-color,box-shadow,translate] duration-200 ease-out',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
     'disabled:cursor-not-allowed disabled:opacity-60',
     variantClasses[variant],

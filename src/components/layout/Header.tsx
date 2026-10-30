@@ -1,5 +1,5 @@
 import { Dumbbell, Moon, Sun, X, Menu } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { useTheme } from '../../app/useTheme'
@@ -10,14 +10,23 @@ function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const shouldReduceMotion = useReducedMotion()
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
     <>
       <header
-        className="sticky top-0 z-30 border-b border-line/60 bg-panel/90 backdrop-blur-md"
-        style={{ boxShadow: '0 1px 0 0 var(--theme-border)' }}
+        data-scrolled={scrolled || undefined}
+        className="app-header sticky top-0 z-30 border-b border-line bg-panel/80"
+        style={{ boxShadow: 'var(--shadow-card)' }}
       >
-        <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 2xl:px-16">
           {/* Wordmark */}
           <Link
             to="/"
@@ -25,7 +34,7 @@ function Header() {
           >
             <motion.span
               whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
-              className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-fg shadow-sm"
+              className="logo-mark flex size-8 items-center justify-center rounded-lg text-accent-fg"
             >
               <Dumbbell aria-hidden="true" size={16} />
             </motion.span>
@@ -46,7 +55,7 @@ function Header() {
                 end={href === '/'}
                 className={({ isActive }) =>
                   `relative min-h-9 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent ${
-                    isActive ? 'text-accent font-semibold' : 'text-muted hover:text-ink'
+                    isActive ? 'text-accent font-semibold' : 'text-muted hover:bg-hover hover:text-ink'
                   }`
                 }
               >
@@ -60,7 +69,7 @@ function Header() {
                             ? { duration: 0 }
                             : springSmooth
                         }
-                        className="absolute inset-0 rounded-xl bg-accent/10"
+                        className="absolute inset-0 rounded-xl bg-accent/12 ring-1 ring-accent/30 shadow-[0_4px_18px_-6px_var(--theme-accent)]"
                         aria-hidden="true"
                       />
                     )}
@@ -124,10 +133,10 @@ function Header() {
               animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
               exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden border-b border-line bg-panel/95 backdrop-blur-md xl:hidden"
+              className="overflow-hidden border-b border-line bg-panel xl:hidden"
               style={{ boxShadow: 'var(--shadow-float)' }}
             >
-              <div className="mx-auto grid max-w-7xl gap-1 p-3 sm:grid-cols-2">
+              <div className="grid w-full gap-1 p-3 sm:grid-cols-2 sm:px-6 lg:px-10">
                 {navigationItems.map(({ label, icon: Icon, href }) => (
                   <NavLink
                     key={label}

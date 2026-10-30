@@ -151,7 +151,7 @@ export function Sheet({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 z-50 flex bg-ink/50 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex bg-ink/40 backdrop-blur-sm"
           onClick={handleBackdrop}
           aria-hidden={!open}
         >
@@ -169,7 +169,7 @@ export function Sheet({
             style={{ boxShadow: 'var(--shadow-sheet)' }}
             className={[
               /* base */
-              'absolute flex flex-col bg-panel outline-none',
+              'absolute flex flex-col border-line bg-panel glass-strong outline-none',
               /* mobile: bottom sheet */
               'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-3xl',
               /* lg+: right side panel when adaptive */

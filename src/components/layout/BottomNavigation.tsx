@@ -34,7 +34,7 @@ function BottomNavigation() {
         boxShadow: 'var(--shadow-float)',
       }}
     >
-      <div className="flex items-center justify-around rounded-2xl border border-line/80 bg-panel/95 px-1 py-1.5 backdrop-blur-md">
+      <div className="flex items-center justify-around rounded-2xl border border-line bg-panel glass-strong px-1 py-1.5">
         {items.map(({ label, icon: Icon, href }) => (
           <NavLink
             key={label}
@@ -61,7 +61,7 @@ function BottomNavigation() {
                           ? { duration: 0 }
                           : springTactile
                       }
-                      className="absolute inset-0 rounded-xl bg-accent shadow-sm"
+                      className="absolute inset-0 rounded-xl bg-accent shadow-[0_6px_18px_-4px_var(--theme-accent)]"
                       aria-hidden="true"
                     />
                   )}

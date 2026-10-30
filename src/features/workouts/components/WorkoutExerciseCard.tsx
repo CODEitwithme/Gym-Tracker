@@ -177,7 +177,7 @@ function SetEditor({
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
             'disabled:cursor-not-allowed disabled:opacity-50',
             set.completed
-              ? 'border-success bg-success text-surface shadow-sm'
+              ? 'border-success bg-success text-[var(--theme-background)] shadow-sm'
               : 'border-line text-muted hover:border-success/50 hover:bg-success-soft hover:text-success',
           ].join(' ')}
         >

@@ -25,7 +25,7 @@ export async function createAiWorkoutLog(
   input: CreateAiWorkoutLogInput,
   database: GymTrackerDatabase = db,
 ): Promise<AiWorkoutLog> {
-  validateAiWorkoutLog(input)
+  validateAiWorkoutLog(input) 
   return await database.transaction('rw', database.aiWorkoutLogs, async () => {
     const now = createTimestamp()
     const log: AiWorkoutLog = {

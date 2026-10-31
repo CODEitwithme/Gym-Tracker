@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy": "npm run build && npx vercel --prod"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

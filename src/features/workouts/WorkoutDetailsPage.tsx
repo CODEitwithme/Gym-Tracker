@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, Clock3 } from 'lucide-react'
-import { Badge, Button, Card, EmptyState } from '../../components/common'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Check, Clock3, Trash2 } from 'lucide-react'
+import { useAppDispatch } from '../../app/hooks'
+import { Badge, Button, Card, EmptyState, Modal } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
 import type { WorkoutDetails } from './workoutService'
-import { loadWorkoutDetails } from './workoutService'
+import { deleteWorkoutSession, loadWorkoutDetails } from './workoutService'
+import { loadActiveWorkoutThunk } from './workoutThunks'
 
 function WorkoutDetailsPage() {
   const { workoutId } = useParams<{ workoutId: string }>()
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const [details, setDetails] = useState<WorkoutDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     if (!workoutId) {
@@ -42,6 +48,25 @@ function WorkoutDetailsPage() {
   useEffect(() => {
     void Promise.resolve().then(() => load())
   }, [load])
+
+  const handleDelete = async () => {
+    if (!details || deleting) return
+    setDeleting(true)
+    try {
+      await deleteWorkoutSession(details.session.id)
+      await dispatch(loadActiveWorkoutThunk())
+      setDeleteOpen(false)
+      navigate('/workouts')
+    } catch (delError) {
+      setError(
+        delError instanceof Error
+          ? delError.message
+          : 'Could not delete workout. Please retry.',
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -95,7 +120,7 @@ function WorkoutDetailsPage() {
 
   return (
     <PageContainer>
-      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
+      <div className="w-full">
         <Link
           to="/workouts"
           className="mb-5 inline-flex items-center gap-2 rounded-md text-sm font-medium text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -103,32 +128,46 @@ function WorkoutDetailsPage() {
           <ArrowLeft aria-hidden="true" size={16} />
           Workout history
         </Link>
-        <div className="mb-7 lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
-          <div className="mb-3 flex flex-wrap items-center gap-3">
-            <Badge variant={session.status === 'completed' ? 'success' : 'warning'}>
-              {session.status === 'completed' ? 'Completed' : 'In progress'}
-            </Badge>
-            <span className="text-sm text-muted">
-              {new Intl.DateTimeFormat(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              }).format(new Date(session.startedAt))}
-            </span>
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-            {session.name}
-          </h1>
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
-            {durationSeconds !== null && (
-              <span className="inline-flex items-center gap-1.5">
-                <Clock3 aria-hidden="true" size={16} />
-                {formatDuration(durationSeconds)}
+        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
+          <div>
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <Badge variant={session.status === 'completed' ? 'success' : 'warning'}>
+                {session.status === 'completed' ? 'Completed' : 'In progress'}
+              </Badge>
+              <span className="text-sm text-muted">
+                {new Intl.DateTimeFormat(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }).format(new Date(session.startedAt))}
               </span>
-            )}
-            <span>{exercises.length} exercises</span>
-            <span>
-              {completedSets}/{allSets.length} sets completed
-            </span>
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              {session.name}
+            </h1>
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
+              {durationSeconds !== null && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock3 aria-hidden="true" size={16} />
+                  {formatDuration(durationSeconds)}
+                </span>
+              )}
+              <span>{exercises.length} exercises</span>
+              <span>
+                {completedSets}/{allSets.length} sets completed
+              </span>
+            </div>
+          </div>
+          <div>
+            <Button
+              variant="ghost"
+              size="small"
+              icon={Trash2}
+              className="text-danger hover:bg-danger-soft hover:text-danger"
+              disabled={deleting}
+              onClick={() => setDeleteOpen(true)}
+            >
+              Delete workout
+            </Button>
           </div>
         </div>
 
@@ -215,6 +254,38 @@ function WorkoutDetailsPage() {
             </ol>
           )}
         </section>
+
+        {/* ── Delete workout confirmation modal ─────────── */}
+        <Modal
+          open={deleteOpen}
+          onClose={() => !deleting && setDeleteOpen(false)}
+          title="Delete workout?"
+          footer={
+            <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
+              <Button
+                variant="ghost"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                icon={Trash2}
+                loading={deleting}
+                disabled={deleting}
+                onClick={() => void handleDelete()}
+              >
+                Delete workout
+              </Button>
+            </div>
+          }
+        >
+          <p className="text-sm leading-6 text-muted">
+            Are you sure you want to delete &ldquo;{session.name}&rdquo; from your history?
+            This action cannot be undone.
+          </p>
+        </Modal>
       </div>
     </PageContainer>
   )

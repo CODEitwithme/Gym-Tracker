@@ -170,6 +170,7 @@ describe('versioned JSON backup', () => {
       exerciseSets: [],
       savedMeals: [],
       mealLogs: [],
+      aiWorkoutLogs: [],
     })
   })
 
@@ -313,7 +314,7 @@ describe('backup import strategies', () => {
     expect(await readBackupData(testDatabase)).toEqual(before)
   })
 
-  it('replaces all six tables with validated backup records', async () => {
+  it('replaces all tables with validated backup records', async () => {
     const original = await seedRecords(testDatabase)
     sourceDatabase = new GymTrackerDatabase(databaseName())
     await sourceDatabase.open()
@@ -321,7 +322,7 @@ describe('backup import strategies', () => {
     const replacement = await createBackup(sourceDatabase)
 
     const result = await importBackup(replacement, 'replace', testDatabase)
-    expect(Object.values(result.inserted)).toEqual([1, 1, 1, 1, 1, 1])
+    expect(Object.values(result.inserted)).toEqual([1, 1, 1, 1, 1, 1, 0])
     expect(await testDatabase.workoutSessions.get(original.workout.id)).toBeUndefined()
     expect(
       await testDatabase.workoutSessions.get(replacementRecords.workout.id),

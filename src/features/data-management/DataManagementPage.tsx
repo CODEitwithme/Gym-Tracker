@@ -63,6 +63,7 @@ const tableLabels: Record<string, string> = {
   exerciseSets: 'Exercise sets',
   savedMeals: 'Saved meals',
   mealLogs: 'Meal logs',
+  aiWorkoutLogs: 'AI workout logs',
 }
 
 function dateSuffix(): string {
@@ -323,7 +324,7 @@ function DataManagementPage() {
 
   return (
     <PageContainer>
-      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
+      <div className="w-full">
       <header className="mb-7 lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
         <p className="mb-2 text-sm font-medium text-accent">Settings</p>
         <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
@@ -438,8 +439,8 @@ function DataManagementPage() {
         <section aria-labelledby="full-backup-title">
           <Card
             title="Full JSON backup"
-            description="A versioned backup contains all six application tables, including soft-deleted records and historical snapshots."
-            actions={<Badge variant="info">Format v1 · schema v1</Badge>}
+            description="A versioned backup contains all application tables, including soft-deleted records, AI workout logs, and historical snapshots."
+            actions={<Badge variant="info">Format v1 · schema v2</Badge>}
           >
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div className="min-w-0">
@@ -500,7 +501,7 @@ function DataManagementPage() {
                 />
                 <p className="mt-2 text-xs text-muted">
                   Maximum file size: 25 MB. Supported backup format: Gym Tracker
-                  backup v1 using the current database schema v1.
+                  backup v1 using database schema v1 or v2.
                 </p>
               </div>
 

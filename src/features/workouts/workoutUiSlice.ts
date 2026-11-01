@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import {
+  deleteWorkoutThunk,
   finishWorkoutThunk,
   loadActiveWorkoutThunk,
   startWorkoutThunk,
@@ -77,6 +78,21 @@ const workoutUiSlice = createSlice({
         state.status = 'failed'
         state.error =
           action.payload ?? action.error.message ?? 'Could not finish workout.'
+      })
+      .addCase(deleteWorkoutThunk.pending, (state) => {
+        state.status = 'saving'
+        state.error = null
+      })
+      .addCase(deleteWorkoutThunk.fulfilled, (state, action) => {
+        if (state.activeWorkoutId === action.payload) {
+          state.activeWorkoutId = null
+        }
+        state.status = 'idle'
+      })
+      .addCase(deleteWorkoutThunk.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error =
+          action.payload ?? action.error.message ?? 'Could not delete workout.'
       })
   },
 })

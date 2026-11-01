@@ -268,7 +268,7 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
       {saveSuccess && (
         <div
           role="status"
-          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-200"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-success/30 bg-success-soft p-3.5 text-xs text-success"
         >
           <div className="flex items-center gap-2">
             <CheckCircle
@@ -280,7 +280,7 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
           <button
             type="button"
             onClick={() => setSaveSuccess(null)}
-            className="shrink-0 text-xs font-medium text-emerald-300 underline hover:text-emerald-100"
+            className="shrink-0 text-xs font-medium text-success underline hover:opacity-80"
           >
             Dismiss
           </button>
@@ -291,7 +291,7 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
       {saveError && (
         <div
           role="alert"
-          className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-200"
+          className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-soft p-3.5 text-xs text-danger"
         >
           <XCircle aria-hidden="true" className="size-4 shrink-0 text-red-400" />
           <span>{saveError}</span>
@@ -302,7 +302,7 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
       {(parseError || voiceError) && (
         <div
           role="alert"
-          className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-200"
+          className="mb-4 rounded-xl border border-danger/30 bg-danger-soft p-3.5 text-xs text-danger"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
               <button
                 type="button"
                 onClick={clearVoiceError}
-                className="shrink-0 text-xs font-semibold text-red-300 hover:text-white"
+                className="shrink-0 text-xs font-semibold text-danger hover:opacity-80"
                 aria-label="Dismiss error"
               >
                 &times;
@@ -338,20 +338,20 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
       {workerUnavailable && !loadingStatus && (
         <div
           role="alert"
-          className="mb-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200"
+          className="mb-4 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-soft p-3.5 text-xs text-warning"
         >
           <WifiOff
             aria-hidden="true"
             className="mt-0.5 size-4 shrink-0 text-amber-400"
           />
           <div className="space-y-1">
-            <p className="font-semibold text-amber-100">
+            <p className="font-semibold text-warning">
               AI Worker Backend Not Detected
             </p>
-            <p className="text-amber-200/80">
+            <p className="text-warning/90">
               Run <code className="rounded bg-hover px-1 py-0.5">npm run dev:all</code> to
               start both the frontend and the AI worker proxy, then configure your key in{' '}
-              <Link to="/settings/ai" className="underline hover:text-amber-100">
+              <Link to="/settings/ai" className="underline hover:opacity-80">
                 AI Logger Settings
               </Link>.
             </p>

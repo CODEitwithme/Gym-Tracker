@@ -1,4 +1,4 @@
-import { Dumbbell, Moon, Sun, X, Menu } from 'lucide-react'
+import { Dumbbell, Moon, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
@@ -7,7 +7,6 @@ import { navigationItems } from './navigation'
 import { springSmooth } from '../../lib/motion'
 
 function Header() {
-  const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const shouldReduceMotion = useReducedMotion()
   const [scrolled, setScrolled] = useState(false)
@@ -107,58 +106,8 @@ function Header() {
                 </motion.span>
               </AnimatePresence>
             </motion.button>
-
-            {/* Hamburger only on screens below lg */}
-            <motion.button
-              type="button"
-              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              aria-expanded={menuOpen}
-              aria-controls="mobile-site-menu"
-              whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }}
-              onClick={() => setMenuOpen((open) => !open)}
-              className="flex size-10 items-center justify-center rounded-xl text-ink transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent lg:hidden"
-            >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </motion.button>
           </div>
         </div>
-
-        {/* Slide-down menu (mobile/tablet only) */}
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.nav
-              id="mobile-site-menu"
-              aria-label="Main navigation"
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
-              animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
-              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden border-b border-line bg-panel lg:hidden"
-              style={{ boxShadow: 'var(--shadow-float)' }}
-            >
-              <div className="grid w-full gap-1 p-3 sm:grid-cols-2 sm:px-6 lg:px-10">
-                {navigationItems.map(({ label, icon: Icon, href }) => (
-                  <NavLink
-                    key={label}
-                    to={href ?? '/'}
-                    end={href === '/'}
-                    onClick={() => setMenuOpen(false)}
-                    className={({ isActive }) =>
-                      `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-accent/10 text-accent font-semibold'
-                          : 'text-muted hover:bg-hover hover:text-ink'
-                      }`
-                    }
-                  >
-                    <Icon size={17} aria-hidden="true" />
-                    {label}
-                  </NavLink>
-                ))}
-              </div>
-            </motion.nav>
-          )}
-        </AnimatePresence>
       </header>
     </>
   )

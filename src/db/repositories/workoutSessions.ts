@@ -137,7 +137,7 @@ export async function softDeleteWorkoutSession(
   return database.transaction('rw', database.workoutSessions, async () => {
     const existing = await database.workoutSessions.get(id)
     if (!existing || existing.deletedAt !== null) {
-      throw new Error(`Active workout session "${id}" was not found.`)
+      throw new Error(`Workout session "${id}" was not found.`)
     }
     const now = createTimestamp()
     const deleted = { ...existing, updatedAt: now, deletedAt: now }

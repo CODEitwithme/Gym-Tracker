@@ -177,7 +177,7 @@ function SavedMealModal({
     >
       <form id="saved-meal-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">
+          <p role="alert" className="rounded-lg border border-danger/20 bg-danger-soft p-3 text-xs text-danger">
             {error}
           </p>
         )}

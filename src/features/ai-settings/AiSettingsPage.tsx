@@ -215,7 +215,7 @@ export function AiSettingsPage() {
       {statusMessage && (
         <div
           role="status"
-          className="mb-6 flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200"
+          className="mb-6 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success-soft p-4 text-sm text-success"
         >
           <CheckCircle aria-hidden="true" className="size-5 shrink-0 text-emerald-400" />
           <span>{statusMessage}</span>
@@ -225,7 +225,7 @@ export function AiSettingsPage() {
       {errorMessage && (
         <div
           role="alert"
-          className="mb-6 flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
+          className="mb-6 flex items-center gap-2.5 rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm text-danger"
         >
           <XCircle aria-hidden="true" className="size-5 shrink-0 text-red-400" />
           <span>{errorMessage}</span>
@@ -302,8 +302,8 @@ export function AiSettingsPage() {
                 role={testResult.ok ? 'status' : 'alert'}
                 className={`mt-4 flex items-start gap-2.5 rounded-xl border p-3.5 text-xs leading-5 ${
                   testResult.ok
-                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                    : 'border-red-500/30 bg-red-500/10 text-red-200'
+                    ? 'border-success/30 bg-success-soft text-success'
+                    : 'border-danger/30 bg-danger-soft text-danger'
                 }`}
               >
                 {testResult.ok ? (

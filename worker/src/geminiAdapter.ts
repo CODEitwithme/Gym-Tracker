@@ -454,7 +454,7 @@ export async function callGeminiRaw(
     apiVersion: string,
     targetModel: string,
     useSystemInstruction = true,
-    responseSchema?: Record<string, unknown>
+    _responseSchema?: Record<string, unknown>
   ): Promise<Response> => {
     const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${encodeURIComponent(targetModel)}:generateContent?key=${encodeURIComponent(apiKey)}`
 

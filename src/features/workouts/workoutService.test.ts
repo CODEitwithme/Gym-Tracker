@@ -20,6 +20,7 @@ import {
   addExerciseToWorkout,
   createAndAddCustomExercise,
   createCustomExercise,
+  deleteWorkoutSession,
   finishWorkout,
   getPreviousPerformance,
   listCompletedWorkoutSummaries,
@@ -709,5 +710,23 @@ describe('custom exercise flow', () => {
         (e) => e.name === 'Unique movement',
       ),
     ).toHaveLength(1)
+  })
+
+  it('deletes workout session and clears it from active queries', async () => {
+    const workout = await makeInProgressWorkout(testDatabase)
+    expect(await loadActiveWorkout(testDatabase)).toBeDefined()
+
+    const deleted = await deleteWorkoutSession(workout.id, testDatabase)
+    expect(deleted.deletedAt).not.toBeNull()
+
+    const activeAfter = await loadActiveWorkout(testDatabase)
+    expect(activeAfter).toBeUndefined()
+
+    const detailsAfter = await loadWorkoutDetails(workout.id, testDatabase)
+    expect(detailsAfter).toBeUndefined()
+
+    await expect(deleteWorkoutSession(workout.id, testDatabase)).rejects.toThrow(
+      /was not found/,
+    )
   })
 })

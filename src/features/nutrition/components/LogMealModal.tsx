@@ -24,6 +24,7 @@ interface LogMealModalProps {
   initialDate?: string
   initialMealType?: MealType
   initialTab?: 'ai' | 'library'
+  initialMeal?: SavedMeal | null
   onLogMeal: (input: {
     savedMealId: string
     consumedAt: string
@@ -48,6 +49,7 @@ function LogMealModal({
   initialDate,
   initialMealType = 'breakfast',
   initialTab = 'library',
+  initialMeal,
   onLogMeal,
   onCreateSavedMeal,
   onLogAiSuccess,
@@ -57,7 +59,9 @@ function LogMealModal({
   const [query, setQuery] = useState('')
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([])
   const [loadingMeals, setLoadingMeals] = useState(false)
-  const [selectedMeal, setSelectedMeal] = useState<SavedMeal | null>(null)
+  const [selectedMeal, setSelectedMeal] = useState<SavedMeal | null>(
+    () => initialMeal ?? null,
+  )
   const [portionPercent, setPortionPercent] = useState('100')
   const [date, setDate] = useState(() => initialDate ?? formatLocalDate(new Date()))
   const [time, setTime] = useState(() => {
@@ -104,7 +108,7 @@ function LogMealModal({
     setPortionPercent('100')
     setError(null)
     setQuery('')
-    setSelectedMeal(null)
+    setSelectedMeal(initialMeal ?? null)
     setAiPrompt('')
     setParsedMeal(null)
     setParsingAi(false)
@@ -134,7 +138,15 @@ function LogMealModal({
     return () => {
       cancelled = true
     }
-  }, [open, initialDate, initialMealType, initialTab, stopListening, clearVoiceError])
+  }, [
+    open,
+    initialDate,
+    initialMealType,
+    initialTab,
+    initialMeal,
+    stopListening,
+    clearVoiceError,
+  ])
 
   const filteredMeals = useMemo(() => {
     const q = query.trim().toLocaleLowerCase()
@@ -344,14 +356,14 @@ function LogMealModal({
           {(error || voiceError) && (
             <div
               role="alert"
-              className="flex items-start justify-between gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300"
+              className="flex items-start justify-between gap-2 rounded-lg border border-danger/30 bg-danger-soft p-3 text-xs text-danger"
             >
               <span>{voiceError || error}</span>
               {voiceError && (
                 <button
                   type="button"
                   onClick={clearVoiceError}
-                  className="shrink-0 text-red-400 hover:text-red-200"
+                  className="shrink-0 text-danger hover:opacity-80"
                   aria-label="Dismiss voice error"
                 >
                   &times;

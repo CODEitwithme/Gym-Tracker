@@ -306,6 +306,8 @@ function WorkoutHistoryCard({
   onRepeat: (summary: WorkoutSummary, e: React.MouseEvent) => void
 }) {
   const { session } = summary
+  const navigate = useNavigate()
+
   return (
     <motion.div
       whileHover={shouldReduceMotion ? undefined : { y: -2 }}
@@ -313,9 +315,22 @@ function WorkoutHistoryCard({
       transition={springSmooth}
       className="h-full"
     >
-      <Link
-        to={`/workouts/${session.id}`}
-        className="flex flex-col justify-between h-full rounded-2xl border border-line bg-panel p-4 shadow-sm shadow-ink/[0.02] transition-colors hover:border-accent/40 hover:bg-hover/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-5 lg:p-6"
+      <div
+        role="group"
+        tabIndex={0}
+        aria-label={`Workout: ${session.name}`}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button, a')) return
+          navigate(`/workouts/${session.id}`)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            if ((e.target as HTMLElement).closest('button, a')) return
+            e.preventDefault()
+            navigate(`/workouts/${session.id}`)
+          }
+        }}
+        className="flex cursor-pointer flex-col justify-between h-full rounded-2xl border border-line bg-panel p-4 shadow-sm shadow-ink/[0.02] transition-colors hover:border-accent/40 hover:bg-hover/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-5 lg:p-6"
       >
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
@@ -327,14 +342,23 @@ function WorkoutHistoryCard({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={(e) => onRepeat(summary, e)}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-muted transition hover:border-accent hover:text-accent"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRepeat(summary, e)
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-muted transition hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
               title="Repeat this workout today"
             >
               <RotateCcw className="size-3" />
               Repeat
             </button>
-            <span className="text-sm font-medium text-accent">View details →</span>
+            <Link
+              to={`/workouts/${session.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded text-sm font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              View details →
+            </Link>
           </div>
         </div>
 
@@ -354,7 +378,7 @@ function WorkoutHistoryCard({
             }
           />
         </div>
-      </Link>
+      </div>
     </motion.div>
   )
 }

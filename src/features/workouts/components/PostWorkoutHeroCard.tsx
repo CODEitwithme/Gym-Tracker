@@ -156,14 +156,14 @@ export function PostWorkoutHeroCard({ onParsedReady }: PostWorkoutHeroCardProps)
         {(error || voiceError) && (
           <div
             role="alert"
-            className="flex items-start justify-between gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-200"
+            className="flex items-start justify-between gap-2 rounded-xl border border-danger/30 bg-danger-soft p-2.5 text-xs text-danger"
           >
             <span>{voiceError || error}</span>
             {voiceError && (
               <button
                 type="button"
                 onClick={clearVoiceError}
-                className="shrink-0 text-red-300 hover:text-white"
+                className="shrink-0 text-danger hover:opacity-80"
                 aria-label="Dismiss error"
               >
                 &times;

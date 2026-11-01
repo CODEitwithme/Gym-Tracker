@@ -268,6 +268,7 @@ function SavedMealsPage() {
         <LogMealModal
           open={Boolean(quickLogMeal)}
           onClose={() => setQuickLogMeal(null)}
+          initialMeal={quickLogMeal}
           onLogMeal={async (logInput) => {
             await logMeal(logInput)
           }}

@@ -56,6 +56,7 @@ export async function readBackupData(
       database.exerciseSets,
       database.savedMeals,
       database.mealLogs,
+      database.aiWorkoutLogs,
     ],
     async () => {
       const [
@@ -65,6 +66,7 @@ export async function readBackupData(
         exerciseSets,
         savedMeals,
         mealLogs,
+        aiWorkoutLogs,
       ] = await Promise.all([
         database.workoutSessions.toArray(),
         database.exercises.toArray(),
@@ -72,6 +74,7 @@ export async function readBackupData(
         database.exerciseSets.toArray(),
         database.savedMeals.toArray(),
         database.mealLogs.toArray(),
+        database.aiWorkoutLogs.toArray(),
       ])
       return {
         workoutSessions,
@@ -80,6 +83,7 @@ export async function readBackupData(
         exerciseSets,
         savedMeals,
         mealLogs,
+        aiWorkoutLogs,
       }
     },
   )
@@ -102,7 +106,7 @@ export async function createBackup(
 export function getBackupTableCounts(data: BackupData): BackupTableCounts {
   return Object.fromEntries(
     BACKUP_TABLES.map((table) => {
-      const records = data[table]
+      const records = data[table] ?? []
       const softDeleted = records.filter((record) => record.deletedAt !== null).length
       return [
         table,
@@ -163,6 +167,7 @@ function emptyCounts(): Record<(typeof BACKUP_TABLES)[number], number> {
     exerciseSets: 0,
     savedMeals: 0,
     mealLogs: 0,
+    aiWorkoutLogs: 0,
   }
 }
 
@@ -205,9 +210,11 @@ export async function importBackup(
       database.exerciseSets,
       database.savedMeals,
       database.mealLogs,
+      database.aiWorkoutLogs,
     ],
     async () => {
       if (strategy === 'replace') {
+        await database.aiWorkoutLogs.clear()
         await database.mealLogs.clear()
         await database.savedMeals.clear()
         await database.exerciseSets.clear()
@@ -221,8 +228,9 @@ export async function importBackup(
         await addIfAny(database.exerciseSets, backup.data.exerciseSets)
         await addIfAny(database.savedMeals, backup.data.savedMeals)
         await addIfAny(database.mealLogs, backup.data.mealLogs)
+        await addIfAny(database.aiWorkoutLogs, backup.data.aiWorkoutLogs ?? [])
         for (const table of BACKUP_TABLES) {
-          inserted[table] = backup.data[table].length
+          inserted[table] = (backup.data[table] ?? []).length
         }
         return
       }
@@ -234,6 +242,7 @@ export async function importBackup(
         setsExisting,
         mealsExisting,
         logsExisting,
+        aiLogsExisting,
       ] = await Promise.all([
         database.workoutSessions.toArray(),
         database.exercises.toArray(),
@@ -241,6 +250,7 @@ export async function importBackup(
         database.exerciseSets.toArray(),
         database.savedMeals.toArray(),
         database.mealLogs.toArray(),
+        database.aiWorkoutLogs.toArray(),
       ])
       const sessions = findTableMerge(
         'workoutSessions',
@@ -272,6 +282,11 @@ export async function importBackup(
         backup.data.mealLogs,
         logsExisting,
       )
+      const aiLogs = findTableMerge(
+        'aiWorkoutLogs',
+        backup.data.aiWorkoutLogs ?? [],
+        aiLogsExisting,
+      )
       const conflicts = [
         ...sessions.conflicts,
         ...exercises.conflicts,
@@ -279,6 +294,7 @@ export async function importBackup(
         ...sets.conflicts,
         ...meals.conflicts,
         ...logs.conflicts,
+        ...aiLogs.conflicts,
       ]
       if (conflicts.length) throw new BackupConflictError(conflicts)
 
@@ -288,18 +304,21 @@ export async function importBackup(
       await addIfAny(database.exerciseSets, sets.insert)
       await addIfAny(database.savedMeals, meals.insert)
       await addIfAny(database.mealLogs, logs.insert)
+      await addIfAny(database.aiWorkoutLogs, aiLogs.insert)
       inserted.workoutSessions = sessions.insert.length
       inserted.exercises = exercises.insert.length
       inserted.workoutExercises = workoutExercises.insert.length
       inserted.exerciseSets = sets.insert.length
       inserted.savedMeals = meals.insert.length
       inserted.mealLogs = logs.insert.length
+      inserted.aiWorkoutLogs = aiLogs.insert.length
       alreadyPresent.workoutSessions = sessions.alreadyPresent
       alreadyPresent.exercises = exercises.alreadyPresent
       alreadyPresent.workoutExercises = workoutExercises.alreadyPresent
       alreadyPresent.exerciseSets = sets.alreadyPresent
       alreadyPresent.savedMeals = meals.alreadyPresent
       alreadyPresent.mealLogs = logs.alreadyPresent
+      alreadyPresent.aiWorkoutLogs = aiLogs.alreadyPresent
     },
   )
 

@@ -52,17 +52,17 @@ function SetEditor({
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [completing, setCompleting] = useState(false)
 
-  const save = async () => {
+  const save = async (): Promise<boolean> => {
     const parsedWeight = Number(weight)
     const parsedReps = Number(reps)
     const parsedSetNumber = Number(setNumber)
     if (weight.trim() === '' || !Number.isFinite(parsedWeight) || parsedWeight < 0) {
       setError('Weight must be a non-negative number.')
-      return
+      return false
     }
     if (reps.trim() === '' || !Number.isInteger(parsedReps) || parsedReps <= 0) {
       setError('Reps must be a positive whole number.')
-      return
+      return false
     }
     if (
       setNumber.trim() === '' ||
@@ -70,7 +70,7 @@ function SetEditor({
       parsedSetNumber <= 0
     ) {
       setError('Set number must be a positive whole number.')
-      return
+      return false
     }
     try {
       await onSave(set.id, {
@@ -81,16 +81,22 @@ function SetEditor({
       setDirty(false)
       onDirtyChange(set.id, false)
       setError(null)
+      return true
     } catch (saveError) {
       setError(
         saveError instanceof Error ? saveError.message : 'Could not save set.',
       )
+      return false
     }
   }
 
   const handleToggle = async () => {
     setCompleting(true)
     try {
+      if (dirty) {
+        const saved = await save()
+        if (!saved) return
+      }
       await onToggle(set)
     } finally {
       setCompleting(false)
@@ -126,6 +132,9 @@ function SetEditor({
             setDirty(true)
             onDirtyChange(set.id, true)
           }}
+          onBlur={() => {
+            if (dirty) void save()
+          }}
         />
         <Input
           label="Weight (kg)"
@@ -139,6 +148,9 @@ function SetEditor({
             setWeight(event.currentTarget.value)
             setDirty(true)
             onDirtyChange(set.id, true)
+          }}
+          onBlur={() => {
+            if (dirty) void save()
           }}
         />
         <Input
@@ -154,6 +166,9 @@ function SetEditor({
             setDirty(true)
             onDirtyChange(set.id, true)
           }}
+          onBlur={() => {
+            if (dirty) void save()
+          }}
         />
 
         {/* Tactile complete toggle with Motion spring feedback */}
@@ -165,10 +180,10 @@ function SetEditor({
               : `Complete set ${set.setNumber}`
           }
           aria-pressed={set.completed}
-          disabled={saving || dirty || completing}
+          disabled={saving || completing}
           onClick={() => void handleToggle()}
           whileTap={
-            saving || dirty || completing || shouldReduceMotion
+            saving || completing || shouldReduceMotion
               ? undefined
               : { scale: 0.88 }
           }
@@ -231,7 +246,7 @@ function SetEditor({
           variant="ghost"
           icon={Trash2}
           aria-label={`Remove set ${set.setNumber}`}
-          disabled={saving || dirty}
+          disabled={saving}
           onClick={() => {
             setError(null)
             setConfirmRemove(true)

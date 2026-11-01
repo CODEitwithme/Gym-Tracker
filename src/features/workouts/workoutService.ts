@@ -20,6 +20,7 @@ import {
   getActiveWorkoutSession,
   getWorkoutSession,
   listWorkoutSessions,
+  softDeleteWorkoutSession,
   updateWorkoutSession,
 } from '../../db/repositories/workoutSessions'
 import { createTimestamp } from '../../lib/dateTime'
@@ -173,6 +174,13 @@ export async function finishWorkout(
       )
     },
   )
+}
+
+export async function deleteWorkoutSession(
+  workoutId: string,
+  database: GymTrackerDatabase = db,
+): Promise<WorkoutSession> {
+  return softDeleteWorkoutSession(workoutId, database)
 }
 
 export async function saveWorkoutName(

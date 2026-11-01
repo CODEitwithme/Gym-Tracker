@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
-import { Check, Clock3, Flag, Plus, RotateCcw, Sparkles } from 'lucide-react'
+import { Check, Clock3, Flag, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState, Input, Modal } from '../../components/common'
@@ -27,6 +27,7 @@ import {
   type WorkoutDetails,
 } from './workoutService'
 import {
+  deleteWorkoutThunk,
   finishWorkoutThunk,
   loadActiveWorkoutThunk,
 } from './workoutThunks'
@@ -65,6 +66,8 @@ function ActiveWorkoutPage() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [finishOpen, setFinishOpen] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
   const [now, setNow] = useState(0)
   const hasUnsavedChanges =
     nameDirty || notesDirty || pendingEdits.length > 0
@@ -316,6 +319,27 @@ function ActiveWorkoutPage() {
     }
   }
 
+  const handleDiscard = async () => {
+    if (!details || discarding) return
+    setDiscarding(true)
+    try {
+      setNameDirty(false)
+      setNotesDirty(false)
+      setPendingEdits([])
+      await dispatch(deleteWorkoutThunk(details.session.id)).unwrap()
+      setDiscardOpen(false)
+      navigate('/workouts')
+    } catch (discardError) {
+      setError(
+        discardError instanceof Error
+          ? discardError.message
+          : 'Could not discard workout. Please retry.',
+      )
+    } finally {
+      setDiscarding(false)
+    }
+  }
+
   const totals = useMemo(() => {
     const sets = details?.exercises.flatMap((item) => item.sets) ?? []
     return {
@@ -356,7 +380,7 @@ function ActiveWorkoutPage() {
 
   return (
     <PageContainer>
-      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
+      <div className="w-full">
         {/* ── Workout header ──────────────────────────────── */}
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex-1">
@@ -392,16 +416,28 @@ function ActiveWorkoutPage() {
           </div>
         </div>
 
-        {/* Finish button */}
-        <Button
-          size="large"
-          variant="outline"
-          icon={Flag}
-          disabled={saving}
-          onClick={() => setFinishOpen(true)}
-        >
-          Finish Workout
-        </Button>
+        {/* Actions row: Discard + Finish */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="large"
+            variant="ghost"
+            icon={Trash2}
+            className="text-danger hover:bg-danger-soft hover:text-danger"
+            disabled={saving || discarding}
+            onClick={() => setDiscardOpen(true)}
+          >
+            Discard
+          </Button>
+          <Button
+            size="large"
+            variant="outline"
+            icon={Flag}
+            disabled={saving || discarding}
+            onClick={() => setFinishOpen(true)}
+          >
+            Finish Workout
+          </Button>
+        </div>
       </div>
 
       {/* ── Dynamic workout progress bar ─────────────────── */}
@@ -659,6 +695,38 @@ function ActiveWorkoutPage() {
           </dl>
         </div>
       </Sheet>
+
+      {/* ── Discard workout confirmation modal ─────────── */}
+      <Modal
+        open={discardOpen}
+        onClose={() => !discarding && setDiscardOpen(false)}
+        title="Discard this workout?"
+        footer={
+          <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
+            <Button
+              variant="ghost"
+              disabled={discarding}
+              onClick={() => setDiscardOpen(false)}
+            >
+              Keep working out
+            </Button>
+            <Button
+              variant="danger"
+              icon={Trash2}
+              loading={discarding}
+              disabled={discarding}
+              onClick={() => void handleDiscard()}
+            >
+              Discard workout
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm leading-6 text-muted">
+          Are you sure you want to discard this workout? All exercises and sets
+          recorded in this session will be deleted and will not appear in your history.
+        </p>
+      </Modal>
 
       {/* ── Unsaved changes blocker — keep as Modal (it's a navigation blocker) */}
       <Modal

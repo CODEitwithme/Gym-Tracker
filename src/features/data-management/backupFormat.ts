@@ -5,6 +5,7 @@ import type {
   WorkoutExercise,
   WorkoutSession,
 } from '../workouts/types'
+import type { AiWorkoutLog } from '../ai-logger/types'
 import type { UUID } from '../../types/records'
 import type { NutritionValues } from '../../types/records'
 import { DATABASE_VERSION } from '../../db/database'
@@ -21,6 +22,7 @@ export const BACKUP_TABLES = [
   'exerciseSets',
   'savedMeals',
   'mealLogs',
+  'aiWorkoutLogs',
 ] as const
 
 export interface BackupData {
@@ -30,6 +32,7 @@ export interface BackupData {
   exerciseSets: ExerciseSet[]
   savedMeals: SavedMeal[]
   mealLogs: MealLog[]
+  aiWorkoutLogs?: AiWorkoutLog[]
 }
 
 export interface GymTrackerBackup {
@@ -278,6 +281,26 @@ function isMealLog(value: unknown): value is MealLog {
   )
 }
 
+function isAiWorkoutLog(value: unknown): value is AiWorkoutLog {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, [
+      ...metadataKeys,
+      'workoutSessionId',
+      'originalMessage',
+      'provider',
+      'parsedExercise',
+      'confidence',
+    ]) &&
+    isMetadata(value) &&
+    isUuid(value.workoutSessionId) &&
+    typeof value.originalMessage === 'string' &&
+    value.provider === 'gemini' &&
+    typeof value.parsedExercise === 'string' &&
+    (value.confidence === 'high' || value.confidence === 'low')
+  )
+}
+
 function requireTable<T>(
   data: UnknownRecord,
   table: keyof BackupData,
@@ -344,6 +367,15 @@ function assertRelationships(data: BackupData): void {
       throw new BackupValidationError(
         `Meal log "${log.id}" references a missing saved meal.`,
       )
+    }
+  }
+  if (data.aiWorkoutLogs) {
+    for (const item of data.aiWorkoutLogs) {
+      if (!sessionIds.has(item.workoutSessionId)) {
+        throw new BackupValidationError(
+          `AI workout log "${item.id}" references a missing workout session.`,
+        )
+      }
     }
   }
 
@@ -424,12 +456,13 @@ export function validateBackup(value: unknown): GymTrackerBackup {
     throw new BackupValidationError('Backup contains unsupported data tables.')
   }
   for (const table of BACKUP_TABLES) {
+    if (table === 'aiWorkoutLogs' && rawData[table] === undefined) continue
     if (!Array.isArray(rawData[table])) {
       throw new BackupValidationError(`data.${table} must be an array.`)
     }
   }
   const recordCount = BACKUP_TABLES.reduce(
-    (total, table) => total + (rawData[table] as unknown[]).length,
+    (total, table) => total + ((rawData[table] as unknown[] | undefined)?.length ?? 0),
     0,
   )
   if (recordCount > MAX_BACKUP_RECORDS) {
@@ -445,6 +478,10 @@ export function validateBackup(value: unknown): GymTrackerBackup {
     exerciseSets: requireTable(rawData, 'exerciseSets', isExerciseSet),
     savedMeals: requireTable(rawData, 'savedMeals', isSavedMeal),
     mealLogs: requireTable(rawData, 'mealLogs', isMealLog),
+    aiWorkoutLogs:
+      rawData.aiWorkoutLogs !== undefined
+        ? requireTable(rawData, 'aiWorkoutLogs', isAiWorkoutLog)
+        : [],
   }
   assertUniqueIds('workoutSessions', data.workoutSessions)
   assertUniqueIds('exercises', data.exercises)
@@ -452,6 +489,9 @@ export function validateBackup(value: unknown): GymTrackerBackup {
   assertUniqueIds('exerciseSets', data.exerciseSets)
   assertUniqueIds('savedMeals', data.savedMeals)
   assertUniqueIds('mealLogs', data.mealLogs)
+  if (data.aiWorkoutLogs && data.aiWorkoutLogs.length > 0) {
+    assertUniqueIds('aiWorkoutLogs', data.aiWorkoutLogs)
+  }
   assertRelationships(data)
 
   return {
@@ -484,5 +524,5 @@ export function serializeBackup(backup: GymTrackerBackup): string {
 }
 
 export function countBackupRecords(data: BackupData): number {
-  return BACKUP_TABLES.reduce((total, table) => total + data[table].length, 0)
+  return BACKUP_TABLES.reduce((total, table) => total + (data[table]?.length ?? 0), 0)
 }

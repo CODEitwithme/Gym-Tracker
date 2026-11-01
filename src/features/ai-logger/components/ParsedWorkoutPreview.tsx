@@ -201,14 +201,14 @@ export function ParsedWorkoutPreview({
         {workout.confidence === 'low' && (
           <div
             role="alert"
-            className="flex items-start gap-2.5 rounded-xl border border-amber-600/30 bg-amber-500/10 p-3.5 text-xs leading-5 text-amber-200"
+            className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft p-3.5 text-xs leading-5 text-warning"
           >
             <Sparkles
               aria-hidden="true"
               className="mt-0.5 size-4 shrink-0 text-amber-400"
             />
             <div>
-              <span className="font-semibold text-amber-300">
+              <span className="font-semibold text-warning">
                 Multiple exercises detected with low confidence:{' '}
               </span>
               Please check the exercise names, weights, and sets below before
@@ -220,14 +220,14 @@ export function ParsedWorkoutPreview({
         {workout.followUpQuestion && (
           <div
             role="alert"
-            className="flex items-start gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/15 p-3.5 text-xs leading-5 text-amber-100"
+            className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft p-3.5 text-xs leading-5 text-warning"
           >
             <Bot
               aria-hidden="true"
               className="mt-0.5 size-4 shrink-0 text-amber-300"
             />
             <div>
-              <span className="font-semibold text-amber-200">
+              <span className="font-semibold text-warning">
                 AI Follow-up Question:{' '}
               </span>
               {workout.followUpQuestion}
@@ -238,7 +238,7 @@ export function ParsedWorkoutPreview({
         {validationError && (
           <p
             role="alert"
-            className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs leading-5 text-red-300"
+            className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-xs leading-5 text-danger"
           >
             {validationError}
           </p>

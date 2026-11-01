@@ -323,7 +323,7 @@ export function AiLoggerPage() {
       {savedMessage && (
         <div
           role="status"
-          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200"
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-success/30 bg-success-soft p-4 text-sm text-success"
         >
           <div className="flex items-center gap-2.5">
             <CheckCircle
@@ -346,14 +346,14 @@ export function AiLoggerPage() {
       {(parseError || saveError || voiceError) && (
         <div
           role="alert"
-          className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
+          className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm text-danger"
         >
           <span>{voiceError || parseError || saveError}</span>
           {voiceError && (
             <button
               type="button"
               onClick={clearVoiceError}
-              className="shrink-0 text-red-300 hover:text-white"
+              className="shrink-0 text-danger hover:opacity-80"
               aria-label="Dismiss error"
             >
               &times;

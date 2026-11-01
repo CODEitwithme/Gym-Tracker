@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit'
 import {
+  deleteWorkoutSession,
   finishWorkout,
   loadActiveWorkout,
   startWorkout,
@@ -42,6 +43,19 @@ export const finishWorkoutThunk = createAsyncThunk<
 >('workoutUi/finish', async (workoutId, { rejectWithValue }) => {
   try {
     const workout = await finishWorkout(workoutId)
+    return workout.id
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error))
+  }
+})
+
+export const deleteWorkoutThunk = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>('workoutUi/delete', async (workoutId, { rejectWithValue }) => {
+  try {
+    const workout = await deleteWorkoutSession(workoutId)
     return workout.id
   } catch (error) {
     return rejectWithValue(getErrorMessage(error))

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Check, Flame } from 'lucide-react'
 import { formatLocalDate } from '../../../lib/dateTime'
 import type { WorkoutSummary } from '../workoutService'
@@ -52,11 +52,14 @@ function getWeekDays(ref: Date): DayData[] {
 
 export function WeeklyConsistencyStrip({
   history,
-  referenceDate = new Date(),
+  referenceDate,
 }: WeeklyConsistencyStripProps) {
+  const [currentDate] = useState(() => new Date())
+  const effectiveDate = referenceDate ?? currentDate
+
   const { weekDays, thisWeekWorkouts, totalWeeklyVolumeKg, totalWeeklyMinutes } =
     useMemo(() => {
-      const days = getWeekDays(referenceDate)
+      const days = getWeekDays(effectiveDate)
       const dayMap = new Map<string, DayData>()
       days.forEach((d) => dayMap.set(d.dateStr, d))
 
@@ -85,7 +88,7 @@ export function WeeklyConsistencyStrip({
         totalWeeklyVolumeKg: Math.round(totalVol),
         totalWeeklyMinutes: Math.round(totalSecs / 60),
       }
-    }, [history, referenceDate])
+    }, [history, effectiveDate])
 
   const formattedHours = Math.floor(totalWeeklyMinutes / 60)
   const formattedMinutes = totalWeeklyMinutes % 60

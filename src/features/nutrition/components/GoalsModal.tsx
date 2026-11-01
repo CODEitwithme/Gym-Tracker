@@ -88,12 +88,12 @@ function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
         </p>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">
+          <p role="alert" className="rounded-lg border border-danger/20 bg-danger-soft p-3 text-xs text-danger">
             {error}
           </p>
         )}
         {persistenceWarning && (
-          <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+          <p role="status" className="rounded-lg border border-warning/20 bg-warning-soft p-3 text-xs text-warning">
             Targets are updated for this session, but browser storage could not
             save them. They may not be available after you close or refresh the app.
           </p>

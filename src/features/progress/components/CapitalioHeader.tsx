@@ -29,7 +29,7 @@ export default function CapitalioHeader({
   onStartWorkout,
 }: CapitalioHeaderProps) {
   return (
-    <div className="mb-6 flex flex-col justify-between gap-5 border-b border-line pb-6 md:flex-row md:items-end">
+    <div className="mb-6 flex flex-col justify-between gap-5 border-b border-line pb-6 md:flex-row md:items-end lg:mb-8 lg:pb-7">
       {/* Title & Subtitle */}
       <div>
         <div className="flex items-center gap-2">
@@ -38,10 +38,10 @@ export default function CapitalioHeader({
             Gym Analytics & Progression
           </p>
         </div>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl lg:text-4xl">
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl lg:text-4xl xl:text-5xl">
           Progress Overview
         </h1>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-sm text-muted lg:text-base">
           Track your strength, consistency, and personal records.
         </p>
       </div>
@@ -118,4 +118,3 @@ export default function CapitalioHeader({
     </div>
   )
 }
-

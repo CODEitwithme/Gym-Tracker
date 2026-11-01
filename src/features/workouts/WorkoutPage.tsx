@@ -128,7 +128,6 @@ function WorkoutPage() {
     try {
       const details = await loadWorkoutDetails(summary.session.id)
       if (!details) return
-
       const lines = details.exercises.map((item) => {
         const name = item.workoutExercise.exerciseNameSnapshot
         const completedSets = item.sets.filter((s) => s.completed)
@@ -154,13 +153,13 @@ function WorkoutPage() {
   return (
     <PageContainer>
       {/* Top Header */}
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
         <div>
           <p className="mb-1 text-sm font-medium text-accent">Training</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
             Workouts
           </h1>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-sm text-muted lg:text-base">
             Track and review your post-workout sessions effortlessly.
           </p>
         </div>
@@ -216,7 +215,7 @@ function WorkoutPage() {
         </Card>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-6 lg:space-y-8">
         {/* 1. Weekly Consistency Calendar Strip */}
         <WeeklyConsistencyStrip history={history} />
 
@@ -230,7 +229,7 @@ function WorkoutPage() {
               <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
                 Your training
               </p>
-              <h2 id="history-title" className="text-xl font-semibold text-ink">
+              <h2 id="history-title" className="text-xl font-semibold text-ink lg:text-2xl">
                 Recent workouts
               </h2>
             </div>
@@ -267,7 +266,7 @@ function WorkoutPage() {
               />
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 xl:gap-5">
               {history.map((summary) => (
                 <WorkoutHistoryCard
                   key={summary.session.id}
@@ -312,14 +311,15 @@ function WorkoutHistoryCard({
       whileHover={shouldReduceMotion ? undefined : { y: -2 }}
       whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
       transition={springSmooth}
+      className="h-full"
     >
       <Link
         to={`/workouts/${session.id}`}
-        className="block rounded-2xl border border-line bg-panel p-4 shadow-sm shadow-ink/[0.02] transition-colors hover:border-accent/40 hover:bg-hover/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-5"
+        className="flex flex-col justify-between h-full rounded-2xl border border-line bg-panel p-4 shadow-sm shadow-ink/[0.02] transition-colors hover:border-accent/40 hover:bg-hover/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-5 lg:p-6"
       >
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <h3 className="font-semibold text-ink text-base">{session.name}</h3>
+            <h3 className="font-semibold text-ink text-base lg:text-lg">{session.name}</h3>
             <p className="mt-1 text-xs text-muted sm:text-sm">
               {formatSessionTimeRange(session.startedAt, session.completedAt)}
             </p>
@@ -338,7 +338,7 @@ function WorkoutHistoryCard({
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-4 gap-2 border-t border-line pt-3 text-xs sm:text-sm">
+        <div className="mt-4 grid grid-cols-4 gap-2 border-t border-line pt-3 text-xs sm:text-sm lg:gap-3">
           <SummaryMetric label="Duration" value={formatDuration(summary.durationSeconds)} />
           <SummaryMetric label="Exercises" value={String(summary.exerciseCount)} />
           <SummaryMetric

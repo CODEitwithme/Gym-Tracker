@@ -194,7 +194,8 @@ export function AiSettingsPage() {
 
   return (
     <PageContainer>
-      <header className="mb-7">
+      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
+      <header className="mb-7 lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex size-7 items-center justify-center rounded-lg bg-accent-soft text-accent">
             <Key aria-hidden="true" size={16} />
@@ -524,6 +525,7 @@ export function AiSettingsPage() {
           </p>
         </div>
       </Modal>
+      </div>
     </PageContainer>
   )
 }

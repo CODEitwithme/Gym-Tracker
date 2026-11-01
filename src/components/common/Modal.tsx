@@ -146,7 +146,7 @@ function Modal({
             animate="visible"
             exit="exit"
             style={{ boxShadow: 'var(--shadow-modal)' }}
-            className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel glass-strong outline-none sm:max-w-lg sm:rounded-3xl"
+            className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel glass-strong outline-none sm:max-w-lg sm:rounded-3xl lg:max-w-xl"
           >
             <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
               <h2 id={titleId} className="text-base font-semibold text-ink">

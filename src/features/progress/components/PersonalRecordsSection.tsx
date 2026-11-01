@@ -37,13 +37,13 @@ export default function PersonalRecordsSection({
   return (
     <div
       style={{ boxShadow: 'var(--shadow-card)' }}
-      className="rounded-2xl border border-line bg-panel p-5 sm:p-6"
+      className="rounded-2xl border border-line bg-panel p-5 sm:p-6 lg:p-7"
     >
       {/* Header and Filter Buttons */}
-      <div className="flex flex-col justify-between gap-4 border-b border-line pb-4 md:flex-row md:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-line pb-4 md:flex-row md:items-center lg:pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">
+            <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl lg:text-2xl">
               Personal Records
             </h2>
             {newInPeriodCount > 0 && (
@@ -53,7 +53,7 @@ export default function PersonalRecordsSection({
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-muted">
+          <p className="mt-0.5 text-xs text-muted lg:text-sm">
             Verified milestones across completed workouts, distinguished by record type.
           </p>
         </div>
@@ -99,12 +99,12 @@ export default function PersonalRecordsSection({
         </div>
       ) : (
         <div className="mt-4">
-          {/* Scrollable Container Sized for Top 5 Rows with Dedicated Scrollbar */}
+          {/* Scrollable Container Sized for Top Rows with Dedicated Scrollbar */}
           <div
             tabIndex={0}
             role="region"
             aria-label="Personal Records table, scrollable"
-            className="max-h-[320px] overflow-y-auto overflow-x-auto rounded-xl border border-line bg-surface/20 focus:outline-none focus:ring-1 focus:ring-lime-500/50"
+            className="max-h-[320px] lg:max-h-[440px] xl:max-h-[500px] overflow-y-auto overflow-x-auto rounded-xl border border-line bg-surface/20 focus:outline-none focus:ring-1 focus:ring-lime-500/50"
             style={{ scrollbarWidth: 'thin' }}
           >
             <table className="w-full text-left text-xs">

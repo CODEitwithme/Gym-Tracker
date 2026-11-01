@@ -41,30 +41,30 @@ export default function VolumeConsistencySection({
     : 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-8">
       {/* 2-Column Grid: Weekly Volume Bar Chart & Recent Training Activity */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-6 xl:gap-8">
         {/* Left Column: Weekly Training Volume Bar Chart */}
         <div
           style={{ boxShadow: 'var(--shadow-card)' }}
-          className="flex flex-col justify-between rounded-2xl border border-line bg-panel p-5 sm:p-6"
+          className="flex flex-col justify-between rounded-2xl border border-line bg-panel p-5 sm:p-6 lg:p-7"
         >
           <div>
             <div className="flex items-center justify-between border-b border-line pb-4">
               <div>
                 <div className="flex items-center gap-2">
                   <BarChart3 size={18} className="text-lime-600 dark:text-lime-400" aria-hidden="true" />
-                  <h3 className="text-base font-bold tracking-tight text-ink sm:text-lg">
+                  <h3 className="text-base font-bold tracking-tight text-ink sm:text-lg lg:text-xl">
                     Weekly Training Volume
                   </h3>
                 </div>
-                <p className="mt-0.5 text-xs text-muted">
+                <p className="mt-0.5 text-xs text-muted lg:text-sm">
                   Total load lifted (weight × reps) across 8 calendar weeks.
                 </p>
               </div>
               <div className="text-right">
                 <span className="text-xs text-muted block">Weekly Avg</span>
-                <span className="text-sm font-bold text-ink tabular-nums">
+                <span className="text-sm font-bold text-ink tabular-nums lg:text-base">
                   {formatVolume(averageWeeklyVol, unit)}
                 </span>
               </div>
@@ -134,18 +134,18 @@ export default function VolumeConsistencySection({
         {/* Right Column: Recent Training Activity List */}
         <div
           style={{ boxShadow: 'var(--shadow-card)' }}
-          className="flex flex-col justify-between rounded-2xl border border-line bg-panel p-5 sm:p-6"
+          className="flex flex-col justify-between rounded-2xl border border-line bg-panel p-5 sm:p-6 lg:p-7"
         >
           <div>
             <div className="flex items-center justify-between border-b border-line pb-4">
               <div>
                 <div className="flex items-center gap-2">
                   <History size={18} className="text-lime-600 dark:text-lime-400" aria-hidden="true" />
-                  <h3 className="text-base font-bold tracking-tight text-ink sm:text-lg">
+                  <h3 className="text-base font-bold tracking-tight text-ink sm:text-lg lg:text-xl">
                     Recent Training Activity
                   </h3>
                 </div>
-                <p className="mt-0.5 text-xs text-muted">
+                <p className="mt-0.5 text-xs text-muted lg:text-sm">
                   Latest completed sessions with volume and exercises.
                 </p>
               </div>
@@ -211,14 +211,14 @@ export default function VolumeConsistencySection({
       {/* Exercise-by-Exercise Progress Summaries */}
       <div
         style={{ boxShadow: 'var(--shadow-card)' }}
-        className="rounded-2xl border border-line bg-panel p-5 sm:p-6"
+        className="rounded-2xl border border-line bg-panel p-5 sm:p-6 lg:p-7"
       >
         <div className="flex items-center justify-between border-b border-line pb-4">
           <div>
-            <h3 className="text-base font-bold tracking-tight text-ink sm:text-lg">
+            <h3 className="text-base font-bold tracking-tight text-ink sm:text-lg lg:text-xl">
               Exercise Performance Summaries
             </h3>
-            <p className="mt-0.5 text-xs text-muted">
+            <p className="mt-0.5 text-xs text-muted lg:text-sm">
               Aggregate volume, completed sets, and top weight per exercise.
             </p>
           </div>

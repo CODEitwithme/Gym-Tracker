@@ -323,9 +323,10 @@ function DataManagementPage() {
 
   return (
     <PageContainer>
-      <header className="mb-7">
+      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
+      <header className="mb-7 lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
         <p className="mb-2 text-sm font-medium text-accent">Settings</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
           Data management
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
@@ -730,6 +731,7 @@ function DataManagementPage() {
           </div>
         )}
       </Modal>
+      </div>
     </PageContainer>
   )
 }

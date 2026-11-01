@@ -102,13 +102,13 @@ function SavedMealsPage() {
         Back to Nutrition
       </Link>
 
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
         <div>
           <p className="mb-2 text-sm font-medium text-accent">Nutrition Library</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
             Saved Meals
           </h1>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 text-sm text-muted lg:text-base">
             Manage your reusable meals, base portions, and nutritional information.
           </p>
         </div>
@@ -178,9 +178,9 @@ function SavedMealsPage() {
           />
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 lg:gap-5 xl:gap-6">
           {meals.map((meal) => (
-            <Card key={meal.id} className="flex flex-col justify-between">
+            <Card key={meal.id} className="flex flex-col justify-between h-full">
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

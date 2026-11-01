@@ -26,7 +26,7 @@ function Header() {
         className="app-header sticky top-0 z-30 border-b border-line bg-panel/80"
         style={{ boxShadow: 'var(--shadow-card)' }}
       >
-        <div className="flex min-h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 2xl:px-16">
+        <div className="flex min-h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 lg:max-w-7xl 2xl:max-w-[1536px] lg:mx-auto 2xl:px-16">
           {/* Wordmark */}
           <Link
             to="/"
@@ -38,15 +38,15 @@ function Header() {
             >
               <Dumbbell aria-hidden="true" size={16} />
             </motion.span>
-            <span className="text-sm font-bold tracking-[0.12em]">
+            <span className="text-sm font-bold tracking-[0.12em] lg:text-base">
               FORGE<span className="text-accent">/</span>FIT
             </span>
           </Link>
 
-          {/* Desktop inline nav (xl+) */}
+          {/* Desktop inline nav (lg+) */}
           <nav
             aria-label="Main navigation"
-            className="hidden items-center gap-1 xl:flex"
+            className="hidden items-center gap-1 lg:flex xl:gap-1.5"
           >
             {navigationItems.map(({ label, href }) => (
               <NavLink
@@ -54,7 +54,7 @@ function Header() {
                 to={href ?? '/'}
                 end={href === '/'}
                 className={({ isActive }) =>
-                  `relative min-h-9 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent ${
+                  `relative min-h-9 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent xl:px-3.5 ${
                     isActive ? 'text-accent font-semibold' : 'text-muted hover:bg-hover hover:text-ink'
                   }`
                 }
@@ -108,7 +108,7 @@ function Header() {
               </AnimatePresence>
             </motion.button>
 
-            {/* Hamburger only between sm and xl */}
+            {/* Hamburger only on screens below lg */}
             <motion.button
               type="button"
               aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -116,14 +116,14 @@ function Header() {
               aria-controls="mobile-site-menu"
               whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }}
               onClick={() => setMenuOpen((open) => !open)}
-              className="flex size-10 items-center justify-center rounded-xl text-ink transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent xl:hidden"
+              className="flex size-10 items-center justify-center rounded-xl text-ink transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent lg:hidden"
             >
               {menuOpen ? <X size={20} /> : <Menu size={20} />}
             </motion.button>
           </div>
         </div>
 
-        {/* Slide-down menu (sm → xl) */}
+        {/* Slide-down menu (mobile/tablet only) */}
         <AnimatePresence>
           {menuOpen && (
             <motion.nav
@@ -133,7 +133,7 @@ function Header() {
               animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
               exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden border-b border-line bg-panel xl:hidden"
+              className="overflow-hidden border-b border-line bg-panel lg:hidden"
               style={{ boxShadow: 'var(--shadow-float)' }}
             >
               <div className="grid w-full gap-1 p-3 sm:grid-cols-2 sm:px-6 lg:px-10">

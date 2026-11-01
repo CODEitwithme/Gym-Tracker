@@ -174,7 +174,7 @@ export function Sheet({
               'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-3xl',
               /* lg+: right side panel when adaptive */
               isAdaptiveSide
-                ? 'lg:inset-x-auto lg:inset-y-0 lg:right-0 lg:bottom-auto lg:max-h-none lg:w-[440px] lg:rounded-none lg:rounded-l-3xl'
+                ? 'lg:inset-x-auto lg:inset-y-0 lg:right-0 lg:bottom-auto lg:max-h-none lg:w-[460px] xl:w-[500px] 2xl:w-[540px] lg:rounded-none lg:rounded-l-3xl'
                 : '',
             ].join(' ')}
           >

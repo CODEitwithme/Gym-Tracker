@@ -356,7 +356,8 @@ function ActiveWorkoutPage() {
 
   return (
     <PageContainer>
-      {/* ── Workout header ──────────────────────────────── */}
+      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
+        {/* ── Workout header ──────────────────────────────── */}
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex-1">
           {/* Status + timer row */}
@@ -680,6 +681,7 @@ function ActiveWorkoutPage() {
           confirm that you want to discard them.
         </p>
       </Modal>
+      </div>
     </PageContainer>
   )
 }

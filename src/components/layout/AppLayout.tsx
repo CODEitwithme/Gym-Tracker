@@ -21,7 +21,7 @@ function AppLayout() {
 
       <Suspense
         fallback={
-          <main className="w-full px-4 py-8 pb-28 sm:px-6 lg:px-10 lg:pb-8 2xl:px-16">
+          <main className="w-full px-4 py-8 pb-28 sm:px-6 lg:px-10 lg:pb-8 lg:max-w-7xl 2xl:max-w-[1536px] lg:mx-auto 2xl:px-16">
             <p role="status" aria-live="polite" className="text-sm text-muted">
               Loading page…
             </p>
@@ -48,7 +48,7 @@ function AppLayout() {
 
       {/* Footer — only visible on desktop (hidden on mobile to save space) */}
       <footer className="hidden border-t border-line bg-panel lg:block">
-        <div className="flex w-full flex-col gap-5 px-5 pt-8 pb-10 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10 2xl:px-16">
+        <div className="flex w-full flex-col gap-5 px-5 pt-8 pb-10 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10 lg:max-w-7xl 2xl:max-w-[1536px] lg:mx-auto 2xl:px-16">
           <p>FORGE/FIT · Train with purpose.</p>
           <nav aria-label="Footer navigation" className="flex flex-wrap gap-x-5 gap-y-2">
             <Link className="transition-colors hover:text-accent" to="/workouts">

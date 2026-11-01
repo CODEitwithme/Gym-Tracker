@@ -31,7 +31,7 @@ function MetricCardItem({
   return (
     <div
       style={{ boxShadow: 'var(--shadow-card)' }}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-panel p-5 transition-all duration-200 hover:border-lime-500/40"
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-panel p-5 transition-all duration-200 hover:border-lime-500/40 lg:p-6"
     >
       {/* Top row: Label and Icon */}
       <div className="flex items-center justify-between gap-2">
@@ -150,7 +150,7 @@ export default function MetricCardsGrid({
               }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5 xl:gap-6">
       {/* 1. Workouts Completed */}
       <MetricCardItem
         title="Workouts Completed"
@@ -194,4 +194,3 @@ export default function MetricCardsGrid({
     </div>
   )
 }
-

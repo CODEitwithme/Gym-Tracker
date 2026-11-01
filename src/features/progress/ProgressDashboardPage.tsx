@@ -194,7 +194,7 @@ export default function ProgressDashboardPage() {
               workoutStatus={workoutStatus}
             />
           ) : (
-            <div className="space-y-7">
+            <div className="space-y-7 lg:space-y-9">
               {/* 1. Overview Metric Cards Grid (Workouts, Total Volume, PRs, Consistency) */}
               <section aria-label="Progress Metrics">
                 <MetricCardsGrid

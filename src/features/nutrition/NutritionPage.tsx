@@ -181,13 +181,13 @@ function NutritionPage() {
   return (
     <PageContainer>
       {/* Page Header */}
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
         <div>
           <p className="mb-2 text-sm font-medium text-accent">Diet & Fuel</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
             Nutrition
           </h1>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 text-sm text-muted lg:text-base">
             Track daily meals, calories, and macronutrients.
           </p>
         </div>
@@ -237,8 +237,8 @@ function NutritionPage() {
       )}
 
       {/* Date Navigation Bar */}
-      <Card className="mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="mb-6 lg:mb-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:px-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -335,7 +335,7 @@ function NutritionPage() {
           </p>
         ) : currentSummary ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4 xl:gap-5">
               <SummaryMetric
                 label="Calories"
                 consumed={currentSummary.totals.calories}
@@ -371,7 +371,7 @@ function NutritionPage() {
           Loading meals for this date…
         </p>
       ) : currentSummary ? (
-      <div className="space-y-6">
+      <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
         {MEAL_TYPES.map((type) => {
           const section = currentSummary.sections[type]
           const logs = section?.logs ?? []
@@ -385,6 +385,7 @@ function NutritionPage() {
           return (
             <Card
               key={type}
+              className="flex flex-col justify-between h-full"
               title={`${section?.title ?? type} (${logs.length} item${logs.length === 1 ? '' : 's'})`}
               description={
                 totals.calories > 0
@@ -567,7 +568,7 @@ function SummaryMetric({
   const isOver = target && target > 0 && consumed > target
 
   return (
-    <div className="rounded-xl border border-line bg-surface p-3.5">
+    <div className="rounded-xl border border-line bg-surface p-3.5 lg:p-4">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted">
           {label}
@@ -575,7 +576,7 @@ function SummaryMetric({
         {isOver && <Badge variant="warning">Exceeded</Badge>}
       </div>
 
-      <p className="mt-2 text-2xl font-bold text-ink">
+      <p className="mt-2 text-2xl font-bold text-ink lg:text-3xl">
         {consumed}{' '}
         <span className="text-xs font-normal text-muted">{unit}</span>
       </p>

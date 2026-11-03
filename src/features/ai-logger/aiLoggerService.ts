@@ -1,4 +1,5 @@
 import { createTimestamp, createUUID } from '../../lib/dateTime'
+import { db } from '../../db/database'
 import {
   createWorkoutSession,
   softDeleteWorkoutSession,
@@ -165,44 +166,46 @@ export async function saveAiMeal(
     throw new Error('No meal data provided to save.')
   }
 
-  let firstLog: MealLog | null = null
+  return await db.transaction('rw', [db.savedMeals, db.mealLogs], async () => {
+    let firstLog: MealLog | null = null
 
-  for (const item of mealItems) {
-    const existing = await fetchSavedMeals(item.mealName)
-    let savedMeal = existing.find(
-      (m) => m.name.toLowerCase() === item.mealName.toLowerCase().trim(),
-    )
+    for (const item of mealItems) {
+      const existing = await fetchSavedMeals(item.mealName)
+      let savedMeal = existing.find(
+        (m) => m.name.toLowerCase() === item.mealName.toLowerCase().trim(),
+      )
 
-    if (!savedMeal) {
-      savedMeal = await createMeal({
-        name: item.mealName.trim(),
-        servingDescription: item.servingDescription.trim() || '1 serving',
-        calorieSource: 'manual',
-        calories: Math.max(0, Math.round(item.calories)),
-        proteinG: Math.max(0, item.proteinG),
-        carbsG: Math.max(0, item.carbsG),
-        fatG: Math.max(0, item.fatG),
+      if (!savedMeal) {
+        savedMeal = await createMeal({
+          name: item.mealName.trim(),
+          servingDescription: item.servingDescription.trim() || '1 serving',
+          calorieSource: 'manual',
+          calories: Math.max(0, Math.round(item.calories)),
+          proteinG: Math.max(0, item.proteinG),
+          carbsG: Math.max(0, item.carbsG),
+          fatG: Math.max(0, item.fatG),
+        })
+      }
+
+      const consumedAt =
+        item.consumedAt || confirmed.consumedAt || new Date().toISOString()
+      const portionPercent =
+        item.portionPercent > 0 ? item.portionPercent : 100
+
+      const log = await logMeal({
+        savedMealId: savedMeal.id,
+        consumedAt,
+        mealType: item.mealType,
+        portionPercent,
       })
+
+      if (!firstLog) {
+        firstLog = log
+      }
     }
 
-    const consumedAt =
-      item.consumedAt || confirmed.consumedAt || new Date().toISOString()
-    const portionPercent =
-      item.portionPercent > 0 ? item.portionPercent : 100
-
-    const log = await logMeal({
-      savedMealId: savedMeal.id,
-      consumedAt,
-      mealType: item.mealType,
-      portionPercent,
-    })
-
-    if (!firstLog) {
-      firstLog = log
-    }
-  }
-
-  return firstLog!
+    return firstLog!
+  })
 }
 
 export async function saveAiWorkout(
@@ -229,98 +232,106 @@ export async function saveAiWorkout(
     throw new Error('No exercise data provided to save.')
   }
 
-  let session: WorkoutSession | null = null
-  try {
-    const startedAt = confirmed.startedAt || createTimestamp()
-    session = await createWorkoutSession({
-      name: confirmed.sessionName || 'AI Workout',
-      startedAt,
-      completedAt: null,
-      status: 'in_progress',
-      notes: '',
-    })
-
-    const combinedNotes =
-      confirmed.notes ||
-      exerciseItems
-        .map((e) => e.notes)
-        .filter(Boolean)
-        .join('; ')
-
-    if (combinedNotes) {
-      await saveWorkoutNotes(session.id, combinedNotes)
-    }
-
-    for (const item of exerciseItems) {
-      const exercises = await findExercises(item.exercise)
-      let exercise = exercises.find(
-        (e) => e.name.toLowerCase() === item.exercise.toLowerCase().trim(),
-      )
-      if (!exercise) {
-        exercise = await createCustomExercise({
-          name: item.exercise.trim(),
-          category: 'other',
-          equipment: null,
-        })
-      }
-
-      const workoutExercise = await addExerciseToWorkout(session.id, exercise.id)
-
-      const rawWeight = item.weight ?? 0
-      const weightKg =
-        item.unit === 'lbs'
-          ? Math.round(rawWeight * 0.453592 * 100) / 100
-          : Math.round(rawWeight * 100) / 100
-
-      const setsCount = item.sets && item.sets > 0 ? item.sets : 1
-      const repsCount = item.reps && item.reps > 0 ? item.reps : 1
-
-      for (let setNumber = 1; setNumber <= setsCount; setNumber++) {
-        await createSet({
-          workoutExerciseId: workoutExercise.id,
-          setNumber,
-          weightKg,
-          reps: repsCount,
-          completed: true,
-        })
-      }
-    }
-
-    let completedSession = await finishWorkout(session.id)
-    if (confirmed.startedAt || confirmed.completedAt) {
-      completedSession = await updateWorkoutSession(completedSession.id, {
-        ...(confirmed.startedAt ? { startedAt: confirmed.startedAt } : {}),
-        ...(confirmed.completedAt ? { completedAt: confirmed.completedAt } : {}),
-      })
-    }
-
-    try {
-      await createAiWorkoutLog({
-        workoutSessionId: completedSession.id,
-        originalMessage:
-          combinedNotes ||
-          exerciseItems.map((e) => e.exercise).join(', '),
-        provider: 'gemini',
-        parsedExercise: exerciseItems.map((e) => e.exercise).join(', '),
-        confidence: 'high',
-      })
-    } catch {
-      // AI log repository write is auxiliary; do not fail workout save if table write fails
-    }
-
-    return completedSession
-  } catch (error: unknown) {
-    if (session) {
+  return await db.transaction(
+    'rw',
+    [
+      db.workoutSessions,
+      db.exercises,
+      db.workoutExercises,
+      db.exerciseSets,
+      db.aiWorkoutLogs,
+    ],
+    async () => {
+      let session: WorkoutSession | null = null
       try {
-        await softDeleteWorkoutSession(session.id)
-      } catch {
-        try {
-          await finishWorkout(session.id)
-        } catch {
-          // ignore cleanup secondary failure
+        const startedAt = confirmed.startedAt || createTimestamp()
+        session = await createWorkoutSession({
+          name: confirmed.sessionName || 'AI Workout',
+          startedAt,
+          completedAt: null,
+          status: 'in_progress',
+          notes: '',
+        })
+
+        const combinedNotes =
+          confirmed.notes ||
+          exerciseItems
+            .map((e) => e.notes)
+            .filter(Boolean)
+            .join('; ')
+
+        if (combinedNotes) {
+          await saveWorkoutNotes(session.id, combinedNotes)
         }
+
+        for (const item of exerciseItems) {
+          const exercises = await findExercises(item.exercise)
+          let exercise = exercises.find(
+            (e) => e.name.toLowerCase() === item.exercise.toLowerCase().trim(),
+          )
+          if (!exercise) {
+            exercise = await createCustomExercise({
+              name: item.exercise.trim(),
+              category: 'other',
+              equipment: null,
+            })
+          }
+
+          const workoutExercise = await addExerciseToWorkout(session.id, exercise.id)
+
+          const rawWeight = item.weight ?? 0
+          const weightKg =
+            item.unit === 'lbs'
+              ? Math.round(rawWeight * 0.453592 * 100) / 100
+              : Math.round(rawWeight * 100) / 100
+
+          const setsCount = item.sets && item.sets > 0 ? item.sets : 1
+          const repsCount = item.reps && item.reps > 0 ? item.reps : 1
+
+          for (let setNumber = 1; setNumber <= setsCount; setNumber++) {
+            await createSet({
+              workoutExerciseId: workoutExercise.id,
+              setNumber,
+              weightKg,
+              reps: repsCount,
+              completed: true,
+            })
+          }
+        }
+
+        let completedSession = await finishWorkout(session.id)
+        if (confirmed.startedAt || confirmed.completedAt) {
+          completedSession = await updateWorkoutSession(completedSession.id, {
+            ...(confirmed.startedAt ? { startedAt: confirmed.startedAt } : {}),
+            ...(confirmed.completedAt ? { completedAt: confirmed.completedAt } : {}),
+          })
+        }
+
+        try {
+          await createAiWorkoutLog({
+            workoutSessionId: completedSession.id,
+            originalMessage:
+              combinedNotes ||
+              exerciseItems.map((e) => e.exercise).join(', '),
+            provider: 'gemini',
+            parsedExercise: exerciseItems.map((e) => e.exercise).join(', '),
+            confidence: 'high',
+          })
+        } catch {
+          // AI log repository write is auxiliary; do not fail workout save if table write fails
+        }
+
+        return completedSession
+      } catch (error: unknown) {
+        if (session) {
+          try {
+            await softDeleteWorkoutSession(session.id)
+          } catch {
+            // rollback happens automatically
+          }
+        }
+        throw error
       }
-    }
-    throw error
-  }
+    },
+  )
 }

@@ -491,4 +491,64 @@ describe('aiLoggerService', () => {
     expect(snackLog).toBeDefined()
     expect(snackLog?.nutritionSnapshot.calories).toBe(140)
   })
-})
+
+  // Test 15: saveAiWorkout rolls back cleanly on transaction failure
+  it('15. saveAiWorkout rolls back cleanly if exercise creation fails', async () => {
+    const invalidWorkout: ConfirmedWorkout = {
+      exercises: [
+        {
+          exercise: '   ',
+          weight: 50,
+          unit: 'kg',
+          reps: 10,
+          sets: 3,
+          durationSeconds: null,
+          notes: '',
+        },
+      ],
+      sessionName: 'Invalid Workout',
+    }
+
+    await expect(saveAiWorkout(invalidWorkout)).rejects.toThrow()
+
+    // Database should be completely empty (atomic rollback)
+    const sessions = await db.workoutSessions.toArray()
+    expect(sessions.length).toBe(0)
+    const sets = await db.exerciseSets.toArray()
+    expect(sets.length).toBe(0)
+  })
+
+  // Test 16: saveAiMeal rolls back cleanly on invalid meal item
+  it('16. saveAiMeal rolls back cleanly if meal item is invalid', async () => {
+    const invalidMeal: ConfirmedMeal = {
+      meals: [
+        {
+          mealName: 'Valid Meal',
+          mealType: 'breakfast',
+          servingDescription: '1 plate',
+          calories: 300,
+          proteinG: 20,
+          carbsG: 30,
+          fatG: 10,
+          portionPercent: 100,
+        },
+        {
+          mealName: '   ',
+          mealType: 'lunch',
+          servingDescription: '',
+          calories: 0,
+          proteinG: 0,
+          carbsG: 0,
+          fatG: 0,
+          portionPercent: 100,
+        },
+      ],
+    }
+
+    await expect(saveAiMeal(invalidMeal)).rejects.toThrow()
+
+    // Atomic rollback: no meals or logs should persist
+    const logs = await db.mealLogs.toArray()
+    expect(logs.length).toBe(0)
+  })
+});

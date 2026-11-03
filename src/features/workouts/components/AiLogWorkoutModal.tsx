@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Mic, MicOff, Sparkles } from 'lucide-react'
 import { Button, Modal } from '../../../components/common'
 import { formatLocalDate } from '../../../lib/dateTime'
@@ -29,8 +29,7 @@ const QUICK_PROMPTS = [
   'Back & Biceps (Yesterday 6 to 7 PM): Deadlift 3x5 at 140kg, Lat Pulldown 3x10 at 65kg, Barbell Curls 3x12 at 30kg',
 ]
 
-export function AiLogWorkoutModal({
-  open,
+function AiLogWorkoutDialog({
   onClose,
   onSaved,
   initialPrompt = '',
@@ -39,7 +38,7 @@ export function AiLogWorkoutModal({
   initialDate,
   initialStartTime,
   initialEndTime,
-}: AiLogWorkoutModalProps) {
+}: Omit<AiLogWorkoutModalProps, 'open'>) {
   const [sessionName, setSessionName] = useState(initialSessionName)
   const [date, setDate] = useState(() => initialDate ?? formatLocalDate(new Date()))
   const [startTime, setStartTime] = useState(initialStartTime ?? '17:00')
@@ -62,33 +61,6 @@ export function AiLogWorkoutModal({
   } = useVoiceDictation((transcript) => {
     setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript))
   })
-
-  useEffect(() => {
-    if (!open) {
-      stopListening()
-      return
-    }
-    clearVoiceError()
-    setPrompt(initialPrompt)
-    setParsedWorkout(initialParsedWorkout)
-    setSessionName(initialSessionName)
-    setDate(initialDate ?? formatLocalDate(new Date()))
-    setStartTime(initialStartTime ?? '17:00')
-    setEndTime(initialEndTime ?? '18:15')
-    setError(null)
-    setParsing(false)
-    setSaving(false)
-  }, [
-    open,
-    initialPrompt,
-    initialParsedWorkout,
-    initialSessionName,
-    initialDate,
-    initialStartTime,
-    initialEndTime,
-    stopListening,
-    clearVoiceError,
-  ])
 
   const handleReset = () => {
     stopListening()
@@ -174,7 +146,7 @@ export function AiLogWorkoutModal({
 
   return (
     <Modal
-      open={open}
+      open
       onClose={handleClose}
       closeBlocked={parsing || saving}
       title="Log Completed Workout"
@@ -190,7 +162,7 @@ export function AiLogWorkoutModal({
               disabled={parsing || !prompt.trim()}
               onClick={() => void handleParse()}
             >
-              Parse & Review
+              Parse &amp; Review
             </Button>
           </div>
         )
@@ -260,7 +232,7 @@ export function AiLogWorkoutModal({
 
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-ink">
-                Review & adjust exercises
+                Review &amp; adjust exercises
               </p>
               <button
                 type="button"
@@ -286,7 +258,7 @@ export function AiLogWorkoutModal({
                   htmlFor="ai-workout-prompt"
                   className="block text-sm font-medium text-ink"
                 >
-                  Tell us when & what you worked out
+                  Tell us when &amp; what you worked out
                 </label>
                 <button
                   type="button"
@@ -332,7 +304,7 @@ export function AiLogWorkoutModal({
                 }}
               />
               <div className="flex items-center justify-between text-xs text-muted">
-                <span>Tip: Include start & end times (e.g. 6 to 7:15 PM) to auto-log duration.</span>
+                <span>Tip: Include start &amp; end times (e.g. 6 to 7:15 PM) to auto-log duration.</span>
                 <span>Ctrl + Enter</span>
               </div>
             </div>
@@ -358,6 +330,16 @@ export function AiLogWorkoutModal({
         )}
       </div>
     </Modal>
+  )
+}
+
+export function AiLogWorkoutModal(props: AiLogWorkoutModalProps) {
+  if (!props.open) return null
+  return (
+    <AiLogWorkoutDialog
+      key={`${props.initialPrompt ?? ''}-${props.initialDate ?? ''}-${props.initialSessionName ?? ''}`}
+      {...props}
+    />
   )
 }
 

@@ -324,7 +324,7 @@ function DataManagementPage() {
 
   return (
     <PageContainer>
-      <div className="w-full">
+      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
       <header className="mb-7 lg:mb-8 lg:pb-6 lg:border-b lg:border-line">
         <p className="mb-2 text-sm font-medium text-accent">Settings</p>
         <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
@@ -340,12 +340,12 @@ function DataManagementPage() {
       <SettingsNav />
 
       {statusMessage && (
-        <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+        <p role="status" className="mb-4 rounded-xl border border-success/30 bg-success-soft p-4 text-sm text-success">
           {statusMessage}
         </p>
       )}
       {operationError && (
-        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div role="alert" className="mb-4 rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
           {operationError}
         </div>
       )}
@@ -368,7 +368,7 @@ function DataManagementPage() {
                   calendar days. Existing records are not replaced or reset.
                   Loading again will not create duplicates.
                 </p>
-                <p className="mt-2 text-sm font-medium text-amber-800">
+                <p className="mt-2 text-sm font-medium text-warning">
                   Demo records are written to this browser only after you confirm.
                   Removing demo data affects only records tracked by this feature.
                 </p>
@@ -509,7 +509,7 @@ function DataManagementPage() {
                 <p role="status" className="text-sm text-muted">Validating backup…</p>
               )}
               {validationError && (
-                <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                <p role="alert" className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger">
                   {validationError}
                 </p>
               )}
@@ -772,12 +772,12 @@ function BackupPreview({
         Backup format v{preview.backupVersion} · database schema v{preview.schemaVersion} · app {preview.appVersion}
       </p>
       {appVersionWarning && (
-        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="mt-3 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-warning">
           Compatibility note: {appVersionWarning} The current schema is supported.
         </p>
       )}
       {empty && (
-        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="mt-3 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-warning">
           This backup contains no records. Restoring it with replacement would
           leave the application tables empty.
         </p>

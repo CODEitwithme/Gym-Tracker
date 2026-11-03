@@ -495,15 +495,18 @@ export async function callGeminiRaw(
     })
   }
 
-  // Prioritize active, fast Gemini models (3-flash-preview, 3.1-flash-lite, etc.)
+  // Prioritize active, fast, reliable Gemini models (2.5-flash, 2.0-flash, 1.5-flash, 3.1-flash-lite, etc.)
   const initialCandidates: Array<{ apiVersion: 'v1' | 'v1beta'; model: string }> = model
     ? [{ apiVersion: 'v1beta', model }, { apiVersion: 'v1', model }]
     : [
+        { apiVersion: 'v1beta', model: 'gemini-2.5-flash' },
+        { apiVersion: 'v1beta', model: 'gemini-2.0-flash' },
+        { apiVersion: 'v1beta', model: 'gemini-1.5-flash' },
         { apiVersion: 'v1beta', model: 'gemini-3-flash-preview' },
         { apiVersion: 'v1beta', model: 'gemini-3.1-flash-lite' },
-        { apiVersion: 'v1', model: 'gemini-3-flash-preview' },
-        { apiVersion: 'v1', model: 'gemini-3.1-flash-lite' },
-        { apiVersion: 'v1beta', model: 'gemini-2.0-flash' },
+        { apiVersion: 'v1', model: 'gemini-2.5-flash' },
+        { apiVersion: 'v1', model: 'gemini-2.0-flash' },
+        { apiVersion: 'v1', model: 'gemini-1.5-flash' },
       ]
 
   let response: Response | null = null
@@ -657,12 +660,18 @@ export async function callGeminiRaw(
   }
 
   let cleaned = rawText.trim()
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
+
+  // 1. Strip markdown code fence if present anywhere in the text
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
+  if (fenceMatch && fenceMatch[1]) {
+    cleaned = fenceMatch[1].trim()
   }
-  cleaned = cleaned.trim()
+
+  // 2. Extract outermost JSON object {...} or array [...] if surrounding prose exists
+  const jsonObjectMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+  if (jsonObjectMatch && jsonObjectMatch[1]) {
+    cleaned = jsonObjectMatch[1].trim()
+  }
 
   try {
     return JSON.parse(cleaned)

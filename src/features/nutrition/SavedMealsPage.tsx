@@ -127,7 +127,7 @@ function SavedMealsPage() {
       {error && (
         <div
           role="alert"
-          className="mb-6 flex flex-col justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center"
+          className="mb-6 flex flex-col justify-between gap-3 rounded-xl border border-danger/20 bg-danger-soft p-4 text-sm text-danger sm:flex-row sm:items-center"
         >
           <p>{error}</p>
           <Button

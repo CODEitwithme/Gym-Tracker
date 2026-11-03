@@ -50,7 +50,7 @@ function Input({
           'placeholder:text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-1',
           'disabled:cursor-not-allowed disabled:bg-hover disabled:text-muted',
           error
-            ? 'border-red-500 focus-visible:outline-red-500'
+            ? 'border-danger focus-visible:outline-danger'
             : 'border-line focus-visible:outline-accent',
           className,
         ].join(' ')}
@@ -61,7 +61,7 @@ function Input({
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="text-xs leading-5 text-red-700">
+        <p id={errorId} role="alert" className="text-xs leading-5 text-danger font-medium">
           {error}
         </p>
       )}

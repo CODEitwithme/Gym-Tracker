@@ -43,8 +43,7 @@ interface LogMealModalProps {
   onLogAiSuccess?: () => void | Promise<void>
 }
 
-function LogMealModal({
-  open,
+function LogMealDialog({
   onClose,
   initialDate,
   initialMealType = 'breakfast',
@@ -53,12 +52,12 @@ function LogMealModal({
   onLogMeal,
   onCreateSavedMeal,
   onLogAiSuccess,
-}: LogMealModalProps) {
+}: Omit<LogMealModalProps, 'open'>) {
   const [activeTab, setActiveTab] = useState<'ai' | 'library'>(initialTab)
   const [mealType, setMealType] = useState<MealType>(initialMealType)
   const [query, setQuery] = useState('')
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([])
-  const [loadingMeals, setLoadingMeals] = useState(false)
+  const [loadingMeals, setLoadingMeals] = useState(true)
   const [selectedMeal, setSelectedMeal] = useState<SavedMeal | null>(
     () => initialMeal ?? null,
   )
@@ -90,41 +89,14 @@ function LogMealModal({
   })
 
   useEffect(() => {
-    if (!open) {
-      stopListening()
-      return
-    }
-    stopListening()
-    clearVoiceError()
     let cancelled = false
 
-    setActiveTab(initialTab)
-    setMealType(initialMealType)
-    setDate(initialDate ?? formatLocalDate(new Date()))
-    const now = new Date()
-    setTime(
-      `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-    )
-    setPortionPercent('100')
-    setError(null)
-    setQuery('')
-    setSelectedMeal(initialMeal ?? null)
-    setAiPrompt('')
-    setParsedMeal(null)
-    setParsingAi(false)
-    setSavingAi(false)
-
-    void Promise.resolve()
-      .then(() => {
-        if (cancelled) return undefined
-        setLoadingMeals(true)
-        return fetchSavedMeals('')
-      })
+    void fetchSavedMeals('')
       .then((meals) => {
         if (!cancelled && meals) {
           setSavedMeals(meals)
           setSelectedMeal((previous) =>
-            meals.find((meal) => meal.id === previous?.id) ?? meals[0] ?? null,
+            meals.find((meal) => meal.id === previous?.id) ?? initialMeal ?? meals[0] ?? null,
           )
         }
       })
@@ -138,15 +110,7 @@ function LogMealModal({
     return () => {
       cancelled = true
     }
-  }, [
-    open,
-    initialDate,
-    initialMealType,
-    initialTab,
-    initialMeal,
-    stopListening,
-    clearVoiceError,
-  ])
+  }, [initialMeal])
 
   const filteredMeals = useMemo(() => {
     const q = query.trim().toLocaleLowerCase()
@@ -346,7 +310,7 @@ function LogMealModal({
   return (
     <>
       <Modal
-        open={open}
+        open
         onClose={onClose}
         closeBlocked={saving || savingAi || parsingAi}
         title="Log a Meal"
@@ -671,6 +635,16 @@ function LogMealModal({
         onSave={handleCreatedMeal}
       />
     </>
+  )
+}
+
+function LogMealModal(props: LogMealModalProps) {
+  if (!props.open) return null
+  return (
+    <LogMealDialog
+      key={`${props.initialTab ?? 'library'}-${props.initialMealType ?? 'breakfast'}-${props.initialDate ?? ''}-${props.initialMeal?.id ?? ''}`}
+      {...props}
+    />
   )
 }
 

@@ -206,6 +206,7 @@ export function AiLoggerPage() {
 
   return (
     <PageContainer>
+      <div className="lg:max-w-4xl xl:max-w-5xl lg:mx-auto">
       <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="mb-2 flex items-center gap-2">
@@ -543,6 +544,7 @@ export function AiLoggerPage() {
             </form>
           </Card>
         )}
+      </div>
       </div>
     </PageContainer>
   )

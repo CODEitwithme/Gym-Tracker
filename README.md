@@ -39,6 +39,16 @@ It does not require an account or a backend.
 Data is stored locally by this application; this README makes no claim that it
 is encrypted by Gym Tracker.
 
+## Step sync
+
+The Google Fit entry in **Settings → Integrations** is demo-only. Google's
+Fitness API used by the original web integration has been retired, so the app
+does not connect to Google or read steps from a phone or watch. Demo sync
+generates sample step counts and stores them locally in IndexedDB. Turn on demo
+simulation before using manual sync or auto-sync; actual steps can still be
+entered from the Dashboard. Demo sync does not overwrite existing daily step
+logs.
+
 ## Requirements
 
 Use Node.js `^20.19.0` or `>=22.12.0` and npm, as specified in

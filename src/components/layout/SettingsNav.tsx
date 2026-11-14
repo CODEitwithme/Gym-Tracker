@@ -1,4 +1,4 @@
-import { Bot, Database } from 'lucide-react'
+import { Activity, Bot, Database } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 export function SettingsNav() {
@@ -7,6 +7,19 @@ export function SettingsNav() {
       aria-label="Settings navigation"
       className="mb-6 flex flex-wrap gap-2 border-b border-line pb-3"
     >
+      <NavLink
+        to="/settings/integrations"
+        className={({ isActive }) =>
+          `flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+            isActive
+              ? 'bg-accent text-accent-fg shadow-sm'
+              : 'text-muted hover:bg-hover hover:text-ink'
+          }`
+        }
+      >
+        <Activity size={16} aria-hidden="true" />
+        <span>Integrations</span>
+      </NavLink>
       <NavLink
         to="/settings/ai"
         className={({ isActive }) =>

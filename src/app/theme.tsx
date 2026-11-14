@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     document.documentElement.dataset.theme = theme;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#09090b" : "#f8f9fa");
+      ?.setAttribute("content", theme === "dark" ? "#060609" : "#f8fafc");
   }, [theme]);
 
   const toggleTheme = () => {

@@ -14,7 +14,7 @@ function AppLayout() {
   useEffect(() => installSpotlight(), [])
 
   return (
-    <div className="min-h-screen bg-transparent text-ink selection:bg-accent selection:text-[var(--theme-background)]">
+    <div className="min-h-screen bg-transparent text-ink selection:bg-accent selection:text-accent-fg">
       <BackgroundFx />
       <Header />
 

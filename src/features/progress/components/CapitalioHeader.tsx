@@ -1,4 +1,4 @@
-import { Dumbbell, Play, Scale } from 'lucide-react'
+import { Dumbbell, Scale } from 'lucide-react'
 import type { ProgressPeriod, WeightUnit } from '../types'
 import { Button } from '../../../components/common'
 
@@ -7,9 +7,7 @@ interface CapitalioHeaderProps {
   onPeriodChange: (period: ProgressPeriod) => void
   unit: WeightUnit
   onUnitChange: (unit: WeightUnit) => void
-  activeWorkoutId: string | null
-  workoutStatus: 'idle' | 'loading' | 'saving' | 'failed'
-  onStartWorkout: () => Promise<void>
+  onStartWorkout: () => void | Promise<void>
 }
 
 const PERIOD_OPTIONS: Array<{ key: ProgressPeriod; label: string }> = [
@@ -24,8 +22,6 @@ export default function CapitalioHeader({
   onPeriodChange,
   unit,
   onUnitChange,
-  activeWorkoutId,
-  workoutStatus,
   onStartWorkout,
 }: CapitalioHeaderProps) {
   return (
@@ -103,16 +99,14 @@ export default function CapitalioHeader({
           })}
         </div>
 
-        {/* Log / Resume Workout Action */}
+        {/* Log Workout Action */}
         <Button
           size="medium"
-          icon={activeWorkoutId ? Play : Dumbbell}
-          loading={workoutStatus === 'saving'}
-          disabled={workoutStatus === 'loading'}
+          icon={Dumbbell}
           onClick={() => void onStartWorkout()}
           className="shrink-0"
         >
-          {activeWorkoutId ? 'Resume Workout' : 'Log Workout'}
+          Log Workout
         </Button>
       </div>
     </div>

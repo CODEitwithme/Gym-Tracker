@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  AlertCircle,
   Dumbbell,
   RefreshCw,
   Scale,
   Target,
 } from 'lucide-react'
-import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import PageContainer from '../../components/layout/PageContainer'
 import { Button, Card } from '../../components/common'
 import CapitalioHeader from './components/CapitalioHeader'
@@ -18,7 +16,6 @@ import VolumeConsistencySection from './components/VolumeConsistencySection'
 import ProgressEmptyState from './components/ProgressEmptyState'
 import { loadProgressDashboardData } from './progressService'
 import type { ProgressDashboardData, ProgressPeriod, WeightUnit } from './types'
-import { loadActiveWorkoutThunk, startWorkoutThunk } from '../workouts/workoutThunks'
 import {
   loadStepProgress,
   loadWeightProgression,
@@ -49,7 +46,6 @@ function getInitialUnit(): WeightUnit {
 }
 
 export default function ProgressDashboardPage() {
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -57,12 +53,6 @@ export default function ProgressDashboardPage() {
   const [activeTab, setActiveTab] = useState<ProgressTab>(
     initialTab === 'body' || initialTab === 'calories' ? initialTab : 'strength',
   )
-
-  const {
-    activeWorkoutId,
-    status: workoutStatus,
-    error: workoutError,
-  } = useAppSelector((state) => state.workoutUi)
 
   const [period, setPeriod] = useState<ProgressPeriod>('30d')
   const [unit, setUnit] = useState<WeightUnit>(getInitialUnit)
@@ -85,11 +75,6 @@ export default function ProgressDashboardPage() {
     setActiveTab(tab)
     setSearchParams(tab === 'strength' ? {} : { tab })
   }
-
-  // Ensure active workout state is current
-  useEffect(() => {
-    void dispatch(loadActiveWorkoutThunk())
-  }, [dispatch])
 
   // Fetch strength progress data from IndexedDB
   const fetchProgressData = useCallback(async (
@@ -184,17 +169,8 @@ export default function ProgressDashboardPage() {
     setSelectedExerciseId(newExerciseId)
   }
 
-  const handleStartWorkout = async () => {
-    if (activeWorkoutId) {
-      navigate('/workouts/active')
-      return
-    }
-    try {
-      await dispatch(startWorkoutThunk(undefined)).unwrap()
-      navigate('/workouts/active')
-    } catch {
-      // workoutError will be rendered from Redux state
-    }
+  const handleLogWorkout = () => {
+    navigate('/workouts', { state: { openLogModal: true } })
   }
 
   return (
@@ -241,17 +217,6 @@ export default function ProgressDashboardPage() {
         </button>
       </div>
 
-      {/* Visible Workout Action Error if any */}
-      {workoutError && (
-        <div
-          role="alert"
-          className="mb-6 flex items-center gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3 text-xs text-danger"
-        >
-          <AlertCircle size={15} className="shrink-0" />
-          <span>{workoutError}</span>
-        </div>
-      )}
-
       {/* TAB 1: Strength & Workouts */}
       {activeTab === 'strength' && (
         <>
@@ -260,9 +225,7 @@ export default function ProgressDashboardPage() {
             onPeriodChange={handlePeriodChange}
             unit={unit}
             onUnitChange={handleUnitChange}
-            activeWorkoutId={activeWorkoutId}
-            workoutStatus={workoutStatus}
-            onStartWorkout={handleStartWorkout}
+            onStartWorkout={handleLogWorkout}
           />
 
           {status === 'loading' && !dashboardData && (
@@ -303,9 +266,7 @@ export default function ProgressDashboardPage() {
             <>
               {!dashboardData.hasAnyWorkouts ? (
                 <ProgressEmptyState
-                  onStartWorkout={handleStartWorkout}
-                  activeWorkoutId={activeWorkoutId}
-                  workoutStatus={workoutStatus}
+                  onStartWorkout={handleLogWorkout}
                 />
               ) : (
                 <div className="space-y-7 lg:space-y-9">

@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Dumbbell,
   Footprints,
-  Play,
   Plus,
   RefreshCw,
   Scale,
@@ -22,7 +21,6 @@ import { getSavedNutritionGoals } from '../nutrition/nutritionService'
 import type { DailyNutritionGoals } from '../nutrition/types'
 import { loadDashboardThunk } from './dashboardSlice'
 import type { DashboardAnalytics, DashboardDay } from './analyticsService'
-import { startWorkoutThunk, loadActiveWorkoutThunk } from '../workouts/workoutThunks'
 import {
   loadTodayBodyMetrics,
   type TodayBodyMetrics,
@@ -73,12 +71,6 @@ export default function DashboardPage() {
   const [bodyMetrics, setBodyMetrics] = useState<TodayBodyMetrics | null>(null)
 
   const {
-    activeWorkoutId,
-    status: workoutStatus,
-    error: workoutError,
-  } = useAppSelector((state) => state.workoutUi)
-
-  const {
     period,
     analytics,
     status,
@@ -103,21 +95,8 @@ export default function DashboardPage() {
     void fetchBodyMetrics()
   }, [dispatch, period])
 
-  useEffect(() => {
-    void dispatch(loadActiveWorkoutThunk())
-  }, [dispatch])
-
-  const handleStartWorkout = async () => {
-    if (activeWorkoutId) {
-      navigate('/workouts/active')
-      return
-    }
-    try {
-      await dispatch(startWorkoutThunk(undefined)).unwrap()
-      navigate('/workouts/active')
-    } catch {
-      // workoutError in state will display
-    }
+  const handleLogWorkout = () => {
+    navigate('/workouts', { state: { openLogModal: true } })
   }
 
   const handleRefresh = () => {
@@ -168,11 +147,8 @@ export default function DashboardPage() {
         <DashboardView
           analytics={analytics}
           nutritionGoals={nutritionGoals}
-          activeWorkoutId={activeWorkoutId}
-          workoutStatus={workoutStatus}
-          workoutError={workoutError}
           bodyMetrics={bodyMetrics}
-          onStartWorkout={handleStartWorkout}
+          onLogWorkout={handleLogWorkout}
           onOpenQuickLog={() => setQuickLogOpen(true)}
           onOpenLogWeight={() => setLogWeightOpen(true)}
           onOpenLogSteps={() => setLogStepsOpen(true)}
@@ -206,11 +182,7 @@ export default function DashboardPage() {
         type="button"
         onClick={() => setQuickLogOpen(true)}
         aria-label="Quick log with AI"
-        className={`fab-pulse fixed z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-fg shadow-lg transition-all duration-200 hover:opacity-95 active:scale-95 focus-visible:outline-2 focus-visible:outline-accent lg:px-5 lg:py-3.5 ${
-          activeWorkoutId
-            ? 'bottom-36 right-4 sm:bottom-24 sm:right-8 lg:bottom-20 lg:right-6'
-            : 'bottom-20 right-4 sm:bottom-8 sm:right-8 lg:bottom-6 lg:right-6'
-        }`}
+        className="fab-pulse fixed z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-fg shadow-lg transition-all duration-200 hover:opacity-95 active:scale-95 focus-visible:outline-2 focus-visible:outline-accent lg:px-5 lg:py-3.5 bottom-20 right-4 sm:bottom-8 sm:right-8 lg:bottom-6 lg:right-6"
       >
         <Sparkles size={18} aria-hidden="true" />
         <span className="font-medium">Quick Log</span>
@@ -238,11 +210,8 @@ export default function DashboardPage() {
 function DashboardView({
   analytics,
   nutritionGoals,
-  activeWorkoutId,
-  workoutStatus,
-  workoutError,
   bodyMetrics,
-  onStartWorkout,
+  onLogWorkout,
   onOpenQuickLog,
   onOpenLogWeight,
   onOpenLogSteps,
@@ -250,11 +219,8 @@ function DashboardView({
 }: {
   analytics: DashboardAnalytics
   nutritionGoals: DailyNutritionGoals | null
-  activeWorkoutId: string | null
-  workoutStatus: 'idle' | 'loading' | 'saving' | 'failed'
-  workoutError: string | null
   bodyMetrics: TodayBodyMetrics | null
-  onStartWorkout: () => Promise<void>
+  onLogWorkout: () => void
   onOpenQuickLog: () => void
   onOpenLogWeight: () => void
   onOpenLogSteps: () => void
@@ -319,49 +285,14 @@ function DashboardView({
 
           <Button
             variant="primary"
-            icon={activeWorkoutId ? Play : Dumbbell}
-            loading={workoutStatus === 'saving'}
-            disabled={workoutStatus === 'loading'}
-            onClick={() => void onStartWorkout()}
+            icon={Dumbbell}
+            onClick={onLogWorkout}
             className="flex-1 sm:flex-initial"
           >
-            {activeWorkoutId ? 'Resume Workout' : 'Start Workout'}
+            Log Workout
           </Button>
         </div>
       </header>
-
-      {/* Workout error feedback */}
-      {workoutError && (
-        <div
-          role="alert"
-          className="rounded-xl border border-danger/20 bg-danger-soft p-3 text-xs text-danger"
-        >
-          {workoutError}
-        </div>
-      )}
-
-      {/* Active Workout In-Progress Alert Banner */}
-      {activeWorkoutId && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-4 text-ink lg:p-5">
-          <div className="flex items-center gap-3">
-            <span className="relative flex size-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-              <span className="relative inline-flex size-3 rounded-full bg-accent" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold lg:text-base">Active workout in progress</p>
-              <p className="text-xs text-muted">Your training session is currently running.</p>
-            </div>
-          </div>
-          <Link
-            to="/workouts/active"
-            className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg transition-opacity hover:opacity-90 lg:px-4 lg:py-2"
-          >
-            <span>Resume</span>
-            <ArrowRight size={14} aria-hidden="true" />
-          </Link>
-        </div>
-      )}
 
       {/* 2. Today's Glance: 2 High-Focus Cards */}
       <section aria-labelledby="today-glance-title">
@@ -377,9 +308,7 @@ function DashboardView({
                 <span className="flex size-9 items-center justify-center rounded-xl bg-surface text-accent">
                   <Dumbbell size={18} aria-hidden="true" />
                 </span>
-                {activeWorkoutId ? (
-                  <Badge variant="warning">In Progress</Badge>
-                ) : todayCompletedWorkout ? (
+                {todayCompletedWorkout ? (
                   <Badge variant="success">Completed</Badge>
                 ) : (
                   <Badge variant="default">Rest / Planned</Badge>
@@ -388,9 +317,7 @@ function DashboardView({
 
               <div className="mt-4">
                 <p className="text-xs font-medium text-muted">Today's Workout</p>
-                {activeWorkoutId ? (
-                  <h3 className="mt-1 text-lg font-semibold text-ink">Session in progress</h3>
-                ) : todayCompletedWorkout ? (
+                {todayCompletedWorkout ? (
                   <h3 className="mt-1 text-lg font-semibold text-ink">
                     {todayCompletedWorkout.session.name}
                   </h3>
@@ -399,25 +326,15 @@ function DashboardView({
                 )}
 
                 <p className="mt-1 text-xs text-muted">
-                  {activeWorkoutId
-                    ? 'Pick up where you left off in your current workout.'
-                    : todayCompletedWorkout
-                      ? `${todayCompletedWorkout.exerciseCount} exercises · ${todayCompletedWorkout.completedSetCount} completed sets · ${formatMetric(todayCompletedWorkout.trainingVolumeKg)} kg volume`
-                      : 'Hit the gym or log a past session to keep your momentum going.'}
+                  {todayCompletedWorkout
+                    ? `${todayCompletedWorkout.exerciseCount} exercises · ${todayCompletedWorkout.completedSetCount} completed sets · ${formatMetric(todayCompletedWorkout.trainingVolumeKg)} kg volume`
+                    : 'Log your workout to track sets, reps, and volume progression.'}
                 </p>
               </div>
             </div>
 
             <div className="mt-5 border-t border-line pt-3">
-              {activeWorkoutId ? (
-                <Link
-                  to="/workouts/active"
-                  className="flex items-center justify-between text-xs font-semibold text-accent hover:underline"
-                >
-                  <span>Resume active workout</span>
-                  <ArrowRight size={14} aria-hidden="true" />
-                </Link>
-              ) : todayCompletedWorkout ? (
+              {todayCompletedWorkout ? (
                 <Link
                   to={`/workouts/${todayCompletedWorkout.session.id}`}
                   className="flex items-center justify-between text-xs font-semibold text-accent hover:underline"
@@ -429,17 +346,17 @@ function DashboardView({
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={() => void onStartWorkout()}
+                    onClick={onLogWorkout}
                     className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
                   >
-                    <span>Start workout now</span>
+                    <span>Log workout</span>
                     <ArrowRight size={14} aria-hidden="true" />
                   </button>
                   <Link
                     to="/workouts"
                     className="text-xs text-muted hover:text-ink"
                   >
-                    Routines
+                    Workouts
                   </Link>
                 </div>
               )}
@@ -875,8 +792,8 @@ function DashboardView({
               <div className="py-8 text-center text-sm text-muted">
                 <p>No recent activity recorded yet.</p>
                 <div className="mt-3 flex justify-center gap-2">
-                  <Button size="small" variant="outline" icon={Dumbbell} onClick={() => void onStartWorkout()}>
-                    Start workout
+                  <Button size="small" variant="outline" icon={Dumbbell} onClick={onLogWorkout}>
+                    Log workout
                   </Button>
                   <Link to="/nutrition">
                     <Button size="small" variant="outline" icon={Apple}>

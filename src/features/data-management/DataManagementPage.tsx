@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, Modal } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
 import SettingsNav from '../../components/layout/SettingsNav'
-import { loadActiveWorkoutThunk } from '../workouts/workoutThunks'
 import {
   loadDashboardThunk,
 } from '../dashboard/dashboardSlice'
@@ -217,7 +216,6 @@ function DataManagementPage() {
           : `Merge complete. Added ${totalInserted} records; ${totalAlreadyPresent} identical records were already present.`,
       )
       void dispatch(loadDashboardThunk(period))
-      void dispatch(loadActiveWorkoutThunk())
     } catch (restoreError) {
       if (restoreError instanceof BackupConflictError) {
         const conflictList = restoreError.conflicts
@@ -287,7 +285,6 @@ function DataManagementPage() {
           : `Loaded fictional demo history for ${result.startDate} through ${result.endDate}: ${result.workoutSessions} workouts, ${result.workoutExercises} workout exercises, ${result.exerciseSets} sets, ${result.exercises} demo exercises, ${result.savedMeals} saved meals, ${result.mealLogs} meal logs, 7 weigh-ins, 7 step logs, and monthly calorie target.`,
       )
       void dispatch(loadDashboardThunk(period))
-      void dispatch(loadActiveWorkoutThunk())
     } catch (seedError) {
       setOperationError(`Demo data could not be loaded: ${errorMessage(seedError)}`)
     } finally {

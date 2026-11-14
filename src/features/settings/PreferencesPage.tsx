@@ -33,18 +33,15 @@ export function PreferencesPage() {
   })
 
   const [stepTargetInput, setStepTargetInput] = useState(String(preferences.stepTarget))
-  const [restTimerInput, setRestTimerInput] = useState(String(preferences.restTimerDuration))
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isTdeeOpen, setIsTdeeOpen] = useState(false)
 
   const handleSavePreferences = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     const parsedSteps = parseInt(stepTargetInput, 10)
-    const parsedRest = parseInt(restTimerInput, 10)
 
     updatePreferences({
       stepTarget: Number.isFinite(parsedSteps) && parsedSteps > 0 ? parsedSteps : 10000,
-      restTimerDuration: Number.isFinite(parsedRest) && parsedRest > 0 ? parsedRest : 90,
     })
 
     saveNutritionGoals(nutritionGoals)
@@ -123,56 +120,7 @@ export function PreferencesPage() {
             </div>
           </Card>
 
-          {/* Section 2: Gym & Workout Experience */}
-          <Card
-            title="Gym &amp; Workout Experience"
-            description="Rest interval timers and auto-start behavior during training sessions."
-          >
-            <div className="mt-4 space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <label htmlFor="restTimerDuration" className="text-sm font-semibold text-ink">
-                    Default Rest Timer
-                  </label>
-                  <p className="text-xs text-muted">Countdown duration when resting between sets.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    id="restTimerDuration"
-                    value={restTimerInput}
-                    onChange={(e) => {
-                      setRestTimerInput(e.target.value)
-                      updatePreferences({ restTimerDuration: parseInt(e.target.value, 10) })
-                    }}
-                    className="rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent"
-                  >
-                    <option value="45">45 seconds</option>
-                    <option value="60">60 seconds (1 min)</option>
-                    <option value="90">90 seconds (1.5 min)</option>
-                    <option value="120">120 seconds (2 min)</option>
-                    <option value="180">180 seconds (3 min)</option>
-                    <option value="240">240 seconds (4 min)</option>
-                    <option value="300">300 seconds (5 min)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-line pt-4">
-                <div>
-                  <span className="text-sm font-semibold text-ink">Auto-start Rest Timer</span>
-                  <p className="text-xs text-muted">Automatically starts the timer when you check off a set.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={preferences.autoStartRestTimer}
-                  onChange={(e) => updatePreferences({ autoStartRestTimer: e.target.checked })}
-                  className="size-5 rounded border-line text-accent accent-accent focus:ring-accent"
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Section 3: Daily Activity & Step Target */}
+          {/* Section 2: Daily Activity & Step Target */}
           <Card
             title="Daily Step Target"
             description="Set your daily walking and step count target for momentum tracking."

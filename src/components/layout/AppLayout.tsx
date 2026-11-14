@@ -3,7 +3,6 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import BottomNavigation from './BottomNavigation'
 import Header from './Header'
-import ActiveWorkoutBanner from './ActiveWorkoutBanner'
 import BackgroundFx from './BackgroundFx'
 import { installSpotlight } from '../../lib/spotlight'
 import { pageVariants } from '../../lib/motion'
@@ -69,9 +68,6 @@ function AppLayout() {
 
       {/* Floating bottom nav (mobile) */}
       <BottomNavigation />
-
-      {/* Floating active workout indicator */}
-      <ActiveWorkoutBanner />
     </div>
   )
 }

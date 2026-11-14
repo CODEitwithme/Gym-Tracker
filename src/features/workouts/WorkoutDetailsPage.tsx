@@ -9,7 +9,6 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react'
-import { useAppDispatch } from '../../app/hooks'
 import { useUserPreferences } from '../../app/useUserPreferences'
 import { Badge, Button, Card, EmptyState, Input, Modal } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
@@ -25,7 +24,6 @@ import {
   saveSet,
   updateWorkoutSessionMetadata,
 } from './workoutService'
-import { loadActiveWorkoutThunk } from './workoutThunks'
 
 function extractDateAndTime(isoString: string): { date: string; time: string } {
   try {
@@ -156,7 +154,6 @@ function EditableSetRow({
 function WorkoutDetailsPage() {
   const { workoutId } = useParams<{ workoutId: string }>()
   const navigate = useNavigate()
-  const dispatch = useAppDispatch()
   const [preferences] = useUserPreferences()
   const unit = preferences.weightUnit
 
@@ -265,7 +262,6 @@ function WorkoutDetailsPage() {
     setDeleting(true)
     try {
       await deleteWorkoutSession(details.session.id)
-      await dispatch(loadActiveWorkoutThunk())
       setDeleteOpen(false)
       navigate('/workouts')
     } catch (delError) {

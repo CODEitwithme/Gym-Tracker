@@ -3,15 +3,13 @@ import { Dumbbell, Plus, Sparkles, TrendingUp } from 'lucide-react'
 import { Button } from '../../../components/common'
 
 interface ProgressEmptyStateProps {
-  onStartWorkout: () => Promise<void>
-  activeWorkoutId: string | null
-  workoutStatus: 'idle' | 'loading' | 'saving' | 'failed'
+  onStartWorkout: () => void | Promise<void>
+  activeWorkoutId?: string | null
+  workoutStatus?: 'idle' | 'loading' | 'saving' | 'failed'
 }
 
 export default function ProgressEmptyState({
   onStartWorkout,
-  activeWorkoutId,
-  workoutStatus,
 }: ProgressEmptyStateProps) {
   return (
     <div
@@ -42,12 +40,10 @@ export default function ProgressEmptyState({
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Button
             size="large"
-            icon={activeWorkoutId ? Dumbbell : Plus}
-            loading={workoutStatus === 'saving'}
-            disabled={workoutStatus === 'loading'}
+            icon={Plus}
             onClick={() => void onStartWorkout()}
           >
-            {activeWorkoutId ? 'Resume Active Workout' : 'Start First Workout'}
+            Log First Workout
           </Button>
 
           <Link to="/workouts">

@@ -7,9 +7,6 @@ const progressPage = lazy(() => import('../features/progress/ProgressDashboardPa
 const notFoundPage = lazy(() => import('../features/not-found/NotFoundPage'))
 const nutritionPage = lazy(() => import('../features/nutrition/NutritionPage'))
 const savedMealsPage = lazy(() => import('../features/nutrition/SavedMealsPage'))
-const activeWorkoutPage = lazy(
-  () => import('../features/workouts/ActiveWorkoutPage'),
-)
 const workoutDetailsPage = lazy(
   () => import('../features/workouts/WorkoutDetailsPage'),
 )
@@ -37,7 +34,7 @@ export const router = createBrowserRouter([
       { index: true, element: createElement(dashboardPage) },
       { path: 'progress', element: createElement(progressPage) },
       { path: 'workouts', element: createElement(workoutPage) },
-      { path: 'workouts/active', element: createElement(activeWorkoutPage) },
+      { path: 'workouts/active', element: <Navigate to="/workouts" replace /> },
       { path: 'workouts/:workoutId', element: createElement(workoutDetailsPage) },
       { path: 'nutrition', element: createElement(nutritionPage) },
       { path: 'nutrition/meals', element: createElement(savedMealsPage) },

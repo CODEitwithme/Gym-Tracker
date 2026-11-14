@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Bot,
   CheckCircle,
@@ -8,6 +8,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { Badge, Button, Card, Input } from '../../../components/common'
+import { listActiveExercises } from '../../../db/repositories/exercises'
 import type {
   ConfirmedExerciseItem,
   ConfirmedWorkout,
@@ -71,6 +72,19 @@ export function ParsedWorkoutPreview({
   )
   const [sessionNotes, setSessionNotes] = useState(workout.notes ?? '')
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [suggestedExercises, setSuggestedExercises] = useState<string[]>([])
+
+  useEffect(() => {
+    let active = true
+    void listActiveExercises()
+      .then((list) => {
+        if (active) setSuggestedExercises(list.map((e) => e.name))
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const updateItem = (
     index: number,
@@ -281,6 +295,7 @@ export function ParsedWorkoutPreview({
                     updateItem(index, 'exercise', e.target.value)
                   }
                   placeholder="e.g. Incline DB Press, Bench Press"
+                  list="exercise-suggestions"
                   required
                   disabled={saving}
                 />
@@ -421,6 +436,14 @@ export function ParsedWorkoutPreview({
                 })`}
           </Button>
         </div>
+
+        {suggestedExercises.length > 0 && (
+          <datalist id="exercise-suggestions">
+            {suggestedExercises.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        )}
       </div>
     </Card>
   )

@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { navigationItems } from './navigation'
 import { springTactile } from '../../lib/motion'
@@ -12,11 +12,7 @@ const mobileNavigationLabels = new Set([
 ])
 
 function BottomNavigation() {
-  const { pathname } = useLocation()
   const shouldReduceMotion = useReducedMotion()
-
-  // Hide on active workout session page to keep screen focused on lifting
-  if (pathname === '/workouts/active') return null
 
   const items = navigationItems.filter(({ label }) =>
     mobileNavigationLabels.has(label),

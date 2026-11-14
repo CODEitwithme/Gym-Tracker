@@ -1,21 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Dumbbell, Play, RotateCcw } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Dumbbell, Plus, RotateCcw } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
-import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
+import { formatLocalDate } from '../../lib/dateTime'
 import { springSmooth } from '../../lib/motion'
 import {
-  cloneWorkoutThunk,
-  loadActiveWorkoutThunk,
-  startWorkoutThunk,
-} from './workoutThunks'
-import {
   listCompletedWorkoutSummaries,
+  loadWorkoutDetails,
   type WorkoutSummary,
 } from './workoutService'
-import AiLogWorkoutModal from './components/AiLogWorkoutModal'
+import LogWorkoutModal from './components/LogWorkoutModal'
 import WeeklyConsistencyStrip from './components/WeeklyConsistencyStrip'
 import PostWorkoutHeroCard from './components/PostWorkoutHeroCard'
 import type { ParsedWorkout } from '../ai-logger/types'
@@ -52,12 +48,8 @@ function formatSessionTimeRange(startedAt: string, completedAt: string | null): 
 }
 
 function WorkoutPage() {
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
+  const location = useLocation()
   const shouldReduceMotion = useReducedMotion()
-  const { activeWorkoutId, status, error } = useAppSelector(
-    (state) => state.workoutUi,
-  )
   const [history, setHistory] = useState<WorkoutSummary[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [historyError, setHistoryError] = useState<string | null>(null)
@@ -65,6 +57,7 @@ function WorkoutPage() {
   // Modal state
   const [modalState, setModalState] = useState<{
     open: boolean
+    initialMode?: 'manual' | 'ai'
     initialPrompt?: string
     initialParsedWorkout?: ParsedWorkout | null
     initialSessionName?: string
@@ -90,20 +83,21 @@ function WorkoutPage() {
   }, [])
 
   useEffect(() => {
-    void Promise.resolve().then(() => {
-      void dispatch(loadActiveWorkoutThunk())
-      void loadHistory()
-    })
-  }, [dispatch, loadHistory])
+    void loadHistory()
+  }, [loadHistory])
 
-  const startLiveWorkout = async () => {
-    try {
-      const workoutId = await dispatch(startWorkoutThunk(undefined)).unwrap()
-      navigate('/workouts/active', { state: { workoutId } })
-    } catch {
-      // The rejected thunk provides the visible error through Redux state.
+  // Open modal if navigated with openLogModal state
+  useEffect(() => {
+    if (location.state && (location.state as { openLogModal?: boolean }).openLogModal) {
+      setModalState({
+        open: true,
+        initialMode: 'manual',
+        initialDate: formatLocalDate(new Date()),
+      })
+      // Clear location state to prevent re-opening on reload
+      window.history.replaceState({}, document.title)
     }
-  }
+  }, [location.state])
 
   const handleHeroParsedReady = (data: {
     prompt: string
@@ -112,6 +106,7 @@ function WorkoutPage() {
   }) => {
     setModalState({
       open: true,
+      initialMode: 'manual',
       initialPrompt: data.prompt,
       initialParsedWorkout: data.parsed,
       initialSessionName: data.context.sessionName,
@@ -125,10 +120,43 @@ function WorkoutPage() {
     e.preventDefault()
     e.stopPropagation()
     try {
-      const workoutId = await dispatch(cloneWorkoutThunk(summary.session.id)).unwrap()
-      navigate('/workouts/active', { state: { workoutId } })
+      const details = await loadWorkoutDetails(summary.session.id)
+      const exercises =
+        details?.exercises.map((item) => {
+          const firstSet = item.sets[0]
+          return {
+            exercise: item.workoutExercise.exerciseNameSnapshot || 'Exercise',
+            weight: firstSet?.weightKg ?? null,
+            unit: 'kg' as const,
+            reps: firstSet?.reps ?? 10,
+            sets: item.sets.length || 3,
+            durationSeconds: null,
+            notes: item.workoutExercise.notes ?? '',
+          }
+        }) ?? []
+
+      const primary = exercises[0]
+
+      setModalState({
+        open: true,
+        initialMode: 'manual',
+        initialSessionName: summary.session.name,
+        initialDate: formatLocalDate(new Date()),
+        initialParsedWorkout: {
+          exercises,
+          exercise: primary?.exercise ?? '',
+          weight: primary?.weight ?? null,
+          unit: primary?.unit ?? 'kg',
+          reps: primary?.reps ?? 10,
+          sets: primary?.sets ?? 3,
+          durationSeconds: null,
+          notes: '',
+          confidence: 'high',
+          followUpQuestion: null,
+        },
+      })
     } catch {
-      // Error handled in Redux state
+      // Error handled silently
     }
   }
 
@@ -147,55 +175,22 @@ function WorkoutPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {activeWorkoutId ? (
-            <Button
-              size="medium"
-              icon={Play}
-              onClick={() => navigate('/workouts/active')}
-            >
-              Resume Live Workout
-            </Button>
-          ) : (
-            <Button
-              size="medium"
-              variant="outline"
-              icon={Dumbbell}
-              loading={status === 'saving'}
-              disabled={status === 'loading'}
-              onClick={() => void startLiveWorkout()}
-            >
-              Start Live Workout
-            </Button>
-          )}
+          <Button
+            size="medium"
+            variant="primary"
+            icon={Plus}
+            onClick={() =>
+              setModalState({
+                open: true,
+                initialMode: 'manual',
+                initialDate: formatLocalDate(new Date()),
+              })
+            }
+          >
+            Log Workout
+          </Button>
         </div>
       </div>
-
-      {error && (
-        <p role="alert" className="mb-5 rounded-xl bg-danger-soft p-4 text-sm text-danger">
-          {error}
-        </p>
-      )}
-
-      {activeWorkoutId && (
-        <Card
-          className="mb-6 border-accent/20 bg-accent-soft"
-          title="Live Workout In Progress"
-          description="Your active session is running and ready to continue."
-          actions={
-            <Button
-              size="small"
-              icon={ArrowRight}
-              onClick={() => navigate('/workouts/active')}
-            >
-              Continue
-            </Button>
-          }
-        >
-          <p className="text-sm text-muted">
-            Tap continue to return to your set-by-set tracker.
-          </p>
-        </Card>
-      )}
 
       <div className="space-y-6 lg:space-y-8">
         {/* 1. Weekly Consistency Calendar Strip */}
@@ -244,7 +239,7 @@ function WorkoutPage() {
               <EmptyState
                 icon={Dumbbell}
                 title="No completed workouts yet"
-                description="Use the box above to log your first workout after the gym!"
+                description="Use the button or box above to log your first workout after the gym!"
               />
             </Card>
           ) : (
@@ -263,10 +258,11 @@ function WorkoutPage() {
       </div>
 
       {/* Review & Edit Modal */}
-      <AiLogWorkoutModal
+      <LogWorkoutModal
         open={modalState.open}
         onClose={() => setModalState({ open: false })}
         onSaved={loadHistory}
+        initialMode={modalState.initialMode}
         initialPrompt={modalState.initialPrompt}
         initialParsedWorkout={modalState.initialParsedWorkout}
         initialSessionName={modalState.initialSessionName}

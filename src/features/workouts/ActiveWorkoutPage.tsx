@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
-import { Check, Clock3, Flag, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react'
+import { Check, Clock3, Flag, Plus, RotateCcw, Scale, Sparkles, Timer, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
+import { useUserPreferences } from '../../app/useUserPreferences'
 import { Badge, Button, Card, EmptyState, Input, Modal } from '../../components/common'
 import Sheet from '../../components/common/Sheet'
 import PageContainer from '../../components/layout/PageContainer'
@@ -10,6 +11,7 @@ import type { Exercise, ExerciseSet } from './types'
 import ExercisePickerModal from './components/ExercisePickerModal'
 import AiActiveWorkoutModal from './components/AiActiveWorkoutModal'
 import WorkoutExerciseCard from './components/WorkoutExerciseCard'
+import { RestTimer } from './components/RestTimer'
 import { springSmooth, listItemVariants } from '../../lib/motion'
 import {
   addExerciseToWorkout,
@@ -50,6 +52,9 @@ function ActiveWorkoutPage() {
   const navigate = useNavigate()
   const shouldReduceMotion = useReducedMotion()
   const reduxError = useAppSelector((state) => state.workoutUi.error)
+  const [preferences, updatePreferences] = useUserPreferences()
+  const [restTimerOpen, setRestTimerOpen] = useState(false)
+  const [restTimerKey, setRestTimerKey] = useState(0)
   const [details, setDetails] = useState<WorkoutDetails | null>(null)
   const [previousPerformance, setPreviousPerformance] = useState<
     Record<string, PreviousPerformance | undefined>
@@ -272,10 +277,15 @@ function ActiveWorkoutPage() {
   }
 
   const toggleSet = async (set: ExerciseSet) => {
+    const nextCompleted = !set.completed
     await runSave(
-      () => saveSet(set.id, { completed: !set.completed }),
-      set.completed ? 'Set marked incomplete.' : 'Set completed.',
+      () => saveSet(set.id, { completed: nextCompleted }),
+      nextCompleted ? 'Set completed.' : 'Set marked incomplete.',
     )
+    if (nextCompleted && preferences.autoStartRestTimer) {
+      setRestTimerOpen(true)
+      setRestTimerKey((prev) => prev + 1)
+    }
   }
 
   const removeSet = async (setId: string) => {
@@ -418,6 +428,32 @@ function ActiveWorkoutPage() {
 
         {/* Actions row: Discard + Finish */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              updatePreferences({
+                weightUnit: preferences.weightUnit === 'kg' ? 'lb' : 'kg',
+              })
+            }
+            className="flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:bg-hover active:scale-95 transition-all"
+            title="Toggle weight unit (kg / lb)"
+          >
+            <Scale size={14} />
+            <span>Unit: {preferences.weightUnit.toUpperCase()}</span>
+          </button>
+
+          <Button
+            size="large"
+            variant="outline"
+            icon={Timer}
+            onClick={() => {
+              setRestTimerOpen(!restTimerOpen)
+              setRestTimerKey((prev) => prev + 1)
+            }}
+          >
+            Rest Timer
+          </Button>
+
           <Button
             size="large"
             variant="ghost"
@@ -599,6 +635,7 @@ function ActiveWorkoutPage() {
                     position={index}
                     count={details.exercises.length}
                     previous={previousPerformance[item.workoutExercise.id]}
+                    unit={preferences.weightUnit}
                     saving={saving}
                     onSaveNotes={async (id, value) => {
                       await runSaveOrThrow(
@@ -648,6 +685,17 @@ function ActiveWorkoutPage() {
           if (msg) setSavedMessage(msg)
         }}
       />
+
+      {/* ── Floating Rest Timer ────────────────────────────── */}
+      <AnimatePresence>
+        {restTimerOpen && (
+          <RestTimer
+            key={restTimerKey}
+            initialSeconds={preferences.restTimerDuration}
+            onDismiss={() => setRestTimerOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Finish workout sheet ─────────────────────────── */}
       <Sheet

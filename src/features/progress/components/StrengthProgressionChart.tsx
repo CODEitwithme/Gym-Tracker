@@ -1,5 +1,5 @@
-import { useState, useId } from 'react'
-import { Dumbbell, Info } from 'lucide-react'
+import { useState, useId, useRef, useEffect } from 'react'
+import { Check, ChevronDown, Dumbbell, Info } from 'lucide-react'
 import type { StrengthChartPoint, WeightUnit } from '../types'
 import { convertWeight, formatWeight } from '../progressCalculations'
 
@@ -22,7 +22,27 @@ export default function StrengthProgressionChart({
 }: StrengthProgressionChartProps) {
   const [showEstimated1Rm, setShowEstimated1Rm] = useState(true)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const gradientId = useId()
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [dropdownOpen])
 
   const selectedExercise = exercises.find((e) => e.id === selectedExerciseId)
   const exerciseName = selectedExercise?.name ?? 'Exercise'
@@ -127,22 +147,64 @@ export default function StrengthProgressionChart({
         {/* Exercise picker and 1RM toggle */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Exercise Dropdown */}
-          <div className="relative min-w-48 max-w-full">
-            <label htmlFor="exercise-selector" className="sr-only">
-              Select exercise
-            </label>
-            <select
+          <div ref={dropdownRef} className="relative min-w-48 max-w-full">
+            <button
+              type="button"
               id="exercise-selector"
-              value={selectedExerciseId}
-              onChange={(e) => onSelectExercise(e.target.value)}
-              className="w-full rounded-xl border border-line bg-surface py-2 pl-3 pr-8 text-xs font-semibold text-ink shadow-xs focus-visible:outline-2 focus-visible:outline-lime-500"
+              aria-haspopup="listbox"
+              aria-expanded={dropdownOpen}
+              onClick={() => setDropdownOpen((prev) => !prev)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-surface py-2 pl-3 pr-2.5 text-xs font-semibold text-ink shadow-xs transition-colors hover:border-lime-500/50 hover:bg-hover focus-visible:outline-2 focus-visible:outline-lime-500"
             >
-              {exercises.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name} {ex.hasData ? '' : '(No data)'}
-                </option>
-              ))}
-            </select>
+              <span className="truncate">
+                {selectedExercise ? selectedExercise.name : 'Select exercise'}
+              </span>
+              <ChevronDown
+                size={14}
+                className={`shrink-0 text-muted transition-transform duration-200 ${
+                  dropdownOpen ? 'rotate-180 text-lime-400' : ''
+                }`}
+              />
+            </button>
+
+            {dropdownOpen && (
+              <div
+                role="listbox"
+                aria-labelledby="exercise-selector"
+                className="absolute left-0 top-full z-50 mt-1.5 max-h-72 w-full min-w-[260px] overflow-y-auto rounded-xl border border-line bg-[#101015]/95 p-1.5 shadow-2xl backdrop-blur-2xl transition-all"
+              >
+                {exercises.map((ex) => {
+                  const isSelected = ex.id === selectedExerciseId
+                  return (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        onSelectExercise(ex.id)
+                        setDropdownOpen(false)
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                        isSelected
+                          ? 'border border-lime-500/30 bg-lime-500/15 font-semibold text-lime-400'
+                          : 'text-ink/80 hover:bg-surface hover:text-ink'
+                      }`}
+                    >
+                      <span className="truncate">{ex.name}</span>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {!ex.hasData && (
+                          <span className="text-[10px] text-muted/70 italic">
+                            (No data)
+                          </span>
+                        )}
+                        {isSelected && <Check size={14} className="text-lime-400" />}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Show 1RM Toggle */}

@@ -12,6 +12,7 @@ type WorkoutExerciseCardProps = {
   position: number
   count: number
   previous?: PreviousPerformance
+  unit?: 'kg' | 'lb'
   saving: boolean
   onSaveNotes: (id: string, notes: string) => Promise<void>
   onMove: (id: string, direction: -1 | 1) => Promise<void>
@@ -27,6 +28,7 @@ type WorkoutExerciseCardProps = {
 
 function SetEditor({
   set,
+  unit = 'kg',
   saving,
   onSave,
   onToggle,
@@ -34,6 +36,7 @@ function SetEditor({
   onDirtyChange,
 }: {
   set: ExerciseSet
+  unit?: 'kg' | 'lb'
   saving: boolean
   onSave: (
     id: string,
@@ -44,7 +47,12 @@ function SetEditor({
   onDirtyChange: (key: string, dirty: boolean) => void
 }) {
   const shouldReduceMotion = useReducedMotion()
-  const [weight, setWeight] = useState(String(set.weightKg))
+  const [weight, setWeight] = useState(() => {
+    if (set.weightKg === 0) return '0'
+    return unit === 'lb'
+      ? String(Number((set.weightKg * 2.20462262185).toFixed(1)))
+      : String(set.weightKg)
+  })
   const [reps, setReps] = useState(String(set.reps))
   const [setNumber, setSetNumber] = useState(String(set.setNumber))
   const [error, setError] = useState<string | null>(null)
@@ -73,9 +81,10 @@ function SetEditor({
       return false
     }
     try {
+      const weightInKg = unit === 'lb' ? parsedWeight / 2.20462262185 : parsedWeight
       await onSave(set.id, {
         setNumber: parsedSetNumber,
-        weightKg: parsedWeight,
+        weightKg: Number(weightInKg.toFixed(2)),
         reps: parsedReps,
       })
       setDirty(false)
@@ -137,7 +146,7 @@ function SetEditor({
           }}
         />
         <Input
-          label="Weight (kg)"
+          label={unit === 'lb' ? 'Weight (lb)' : 'Weight (kg)'}
           type="number"
           inputMode="decimal"
           min="0"
@@ -314,6 +323,7 @@ function WorkoutExerciseCard({
   position,
   count,
   previous,
+  unit = 'kg',
   saving,
   onSaveNotes,
   onMove,
@@ -382,10 +392,13 @@ function WorkoutExerciseCard({
             </p>
             <p className="mt-1 leading-5 text-muted">
               {previous.sets
-                .map(
-                  (set) =>
-                    `Set ${set.setNumber}: ${set.weightKg} kg × ${set.reps}`,
-                )
+                .map((set) => {
+                  const wt =
+                    unit === 'lb'
+                      ? `${Number((set.weightKg * 2.20462262185).toFixed(1))} lb`
+                      : `${set.weightKg} kg`
+                  return `Set ${set.setNumber}: ${wt} × ${set.reps}`
+                })
                 .join(' · ')}
             </p>
           </div>
@@ -424,6 +437,7 @@ function WorkoutExerciseCard({
                 <SetEditor
                   key={set.id}
                   set={set}
+                  unit={unit}
                   saving={saving}
                   onSave={onSaveSet}
                   onToggle={onToggleSet}

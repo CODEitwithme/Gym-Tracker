@@ -10,7 +10,6 @@ import {
 } from './progressCalculations'
 import { GymTrackerDatabase } from '../../db/database'
 import { loadProgressDashboardData } from './progressService'
-import { createExercise } from '../../db/repositories/exercises'
 import { createWorkoutSession } from '../../db/repositories/workoutSessions'
 import { addExerciseSet, addWorkoutExercise } from '../../db/repositories/workoutDetails'
 
@@ -129,14 +128,13 @@ describe('progressService integration', () => {
   it('aggregates real completed workout data, PRs, and strength progression', async () => {
     const testDb = new GymTrackerDatabase(`test-progress-real-${Date.now()}`)
 
-    const bench = await createExercise(
-      { name: 'Barbell Bench Press', category: 'chest', equipment: 'Barbell' },
-      testDb,
-    )
-    const squat = await createExercise(
-      { name: 'Barbell Squat', category: 'legs', equipment: 'Barbell' },
-      testDb,
-    )
+    const [bench, squat] = await Promise.all([
+      testDb.exercises.where('name').equals('Barbell Bench Press').first(),
+      testDb.exercises.where('name').equals('Back Squat').first(),
+    ])
+    if (!bench || !squat) {
+      throw new Error('The starter exercises were not seeded.')
+    }
 
     // Complete workout 1
     const w1 = await createWorkoutSession(

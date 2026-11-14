@@ -91,6 +91,7 @@ describe('demo history service', () => {
 
     expect(result).toMatchObject({
       workoutSessions: 5,
+      exercises: 0,
       workoutExercises: 15,
       exerciseSets: 45,
       savedMeals: 8,
@@ -102,6 +103,7 @@ describe('demo history service', () => {
 
     const sessions = await testDatabase.workoutSessions.toArray()
     expect(sessions).toHaveLength(5)
+    expect(await testDatabase.exercises.count()).toBe(25)
     expect(sessions.every((session) => session.status === 'completed')).toBe(true)
     expect(
       new Set(sessions.map((session) => formatLocalDate(new Date(session.completedAt!)))).size,
@@ -154,12 +156,13 @@ describe('demo history service', () => {
       ),
     )
     const squat = (await testDatabase.exercises
-      .filter((exercise) => exercise.name === 'Demo · Barbell Squat')
+      .filter((exercise) => exercise.name === 'Back Squat')
       .first())
     expect(squat).toBeDefined()
     const progress = await loadExerciseProgress(squat!.id, testDatabase)
-    expect(progress.entries).toHaveLength(1)
+    expect(progress.entries).toHaveLength(2)
     expect(progress.entries[0].sets).toHaveLength(3)
+    expect(progress.entries[1].sets).toHaveLength(3)
 
     const weightLogs = await testDatabase.weightLogs.toArray()
     expect(weightLogs).toHaveLength(7)
@@ -211,7 +214,7 @@ describe('demo history service', () => {
     }
 
     const result = await seedDemoData(testDatabase, asOf)
-    expect(result.exercises).toBe(12)
+    expect(result.exercises).toBe(0)
     expect(await testDatabase.exercises.get(exercise.id)).toEqual(before.exercise)
     expect(await testDatabase.workoutSessions.get(realWorkout.session!.id)).toEqual(before.session)
     expect(await testDatabase.workoutExercises.get(realWorkout.relation.id)).toEqual(before.relation)
@@ -263,11 +266,11 @@ describe('demo history service', () => {
       testDatabase.savedMeals.count(),
       testDatabase.mealLogs.count(),
     ])
-    expect(counts).toEqual([0, 0, 0, 0, 0, 0])
+    expect(counts).toEqual([0, 25, 0, 0, 0, 0])
     expect(localStorage.getItem('gym-tracker-demo-data-v1')).toBeNull()
   })
 
-  it('cleans only tracked demo records and preserves records that use a demo exercise', async () => {
+  it('cleans demo records while preserving references to starter exercises', async () => {
     const existingExercise = await createExercise(
       { name: 'Bench Press', category: 'chest', equipment: 'Barbell' },
       testDatabase,
@@ -305,13 +308,13 @@ describe('demo history service', () => {
       },
       testDatabase,
     )
-    const demoExercise = await testDatabase.exercises
+    const starterExercise = await testDatabase.exercises
       .where('name')
-      .equals('Demo · Barbell Squat')
+      .equals('Back Squat')
       .first()
-    expect(demoExercise).toBeDefined()
+    expect(starterExercise).toBeDefined()
     const userRelation = await addWorkoutExercise(
-      { workoutId: userWorkout.id, exerciseId: demoExercise!.id },
+      { workoutId: userWorkout.id, exerciseId: starterExercise!.id },
       testDatabase,
     )
 
@@ -320,11 +323,11 @@ describe('demo history service', () => {
     expect(result.removed.workoutSessions).toBe(5)
     expect(result.removed.exerciseSets).toBe(45)
     expect(result.removed.mealLogs).toBe(22)
-    expect(result.manifestRetained).toBe(true)
-    expect(result.preserved).toBeGreaterThan(0)
+    expect(result.manifestRetained).toBe(false)
+    expect(result.preserved).toBe(0)
     expect(await testDatabase.workoutSessions.get(userWorkout.id)).toBeDefined()
     expect(await testDatabase.workoutExercises.get(userRelation.id)).toBeDefined()
-    expect(await testDatabase.exercises.get(demoExercise!.id)).toBeDefined()
+    expect(await testDatabase.exercises.get(starterExercise!.id)).toBeDefined()
     expect(await testDatabase.workoutSessions.get(realWorkout.session!.id)).toEqual(
       realWorkout.session,
     )
@@ -336,12 +339,7 @@ describe('demo history service', () => {
         .filter((session) => session.name.startsWith('Demo:'))
         .count(),
     ).toBe(0)
-    await expect(seedDemoData(testDatabase, asOf)).rejects.toThrow(
-      /still in use or have changed/,
-    )
-
-    // With force = true, it bypasses the cleanup_pending manifest and successfully seeds demo data
-    const forceResult = await seedDemoData(testDatabase, asOf, true)
+    const forceResult = await seedDemoData(testDatabase, asOf)
     expect(forceResult.alreadyLoaded).toBe(false)
     expect(forceResult.workoutSessions).toBe(5)
   })

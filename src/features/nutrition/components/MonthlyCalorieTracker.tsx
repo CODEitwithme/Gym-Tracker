@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   Calendar,
+  Check,
   ChevronLeft,
   ChevronRight,
+  Pencil,
   Sliders,
+  X,
 } from 'lucide-react'
 import { Badge, Button, Card } from '../../../components/common'
 import {
   loadMonthlyAdherenceSummary,
   type MonthlyAdherenceSummary,
 } from '../monthlyTargetsService'
+import {
+  loadManualBodyFatChangePercent,
+  saveManualBodyFatChangePercent,
+} from '../manualBodyFatChangeService'
 import { formatLocalDate } from '../../../lib/dateTime'
 
 interface MonthlyCalorieTrackerProps {
@@ -26,6 +34,17 @@ export function MonthlyCalorieTracker({
   const currentInitialMonth = formatLocalDate(new Date()).slice(0, 7)
   const [selectedMonthKey, setSelectedMonthKey] = useState(currentInitialMonth)
   const [summary, setSummary] = useState<MonthlyAdherenceSummary | null>(null)
+  const [manualBodyFat, setManualBodyFat] = useState(() => {
+    try {
+      return { value: loadManualBodyFatChangePercent(), error: null as string | null }
+    } catch {
+      return { value: null, error: 'Could not load the saved body fat change.' }
+    }
+  })
+  const [bodyFatDraft, setBodyFatDraft] = useState('')
+  const [isEditingBodyFat, setIsEditingBodyFat] = useState(false)
+  const manualBodyFatChangePercent = manualBodyFat.value
+  const bodyFatError = manualBodyFat.error
 
   const loadData = async (monthKey: string) => {
     try {
@@ -52,6 +71,29 @@ export function MonthlyCalorieTracker({
     const next = new Date(y, m, 1)
     const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
     setSelectedMonthKey(nextKey)
+  }
+
+  const handleSaveBodyFatChange = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const value = bodyFatDraft.trim() === '' ? Number.NaN : Number(bodyFatDraft)
+    if (!Number.isFinite(value)) {
+      setManualBodyFat((current) => ({
+        ...current,
+        error: 'Enter a valid body fat change percentage.',
+      }))
+      return
+    }
+
+    try {
+      saveManualBodyFatChangePercent(value)
+      setManualBodyFat({ value, error: null })
+      setIsEditingBodyFat(false)
+    } catch {
+      setManualBodyFat((current) => ({
+        ...current,
+        error: 'Could not save the body fat change. Please try again.',
+      }))
+    }
   }
 
   const [yearStr, monthStr] = selectedMonthKey.split('-')
@@ -163,22 +205,84 @@ export function MonthlyCalorieTracker({
           </div>
 
           <div className="rounded-xl border border-line bg-surface p-3.5">
-            <p className="text-xs text-muted">Est. Body Fat Δ</p>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <p
-                className={`text-xl font-bold sm:text-2xl ${
-                  summary.estimatedWeightChangeKg < 0
-                    ? 'text-warning'
-                    : summary.estimatedWeightChangeKg > 0
-                      ? 'text-success'
-                      : 'text-ink'
-                }`}
-              >
-                {summary.estimatedWeightChangeKg > 0 ? '+' : ''}
-                {summary.estimatedWeightChangeKg} kg
-              </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted">Est. Body Fat Δ</p>
+              {!isEditingBodyFat && (
+                <Button
+                  size="small"
+                  variant="ghost"
+                  icon={Pencil}
+                  className="min-h-8 px-2"
+                  onClick={() => {
+                    setBodyFatDraft(
+                      manualBodyFatChangePercent === null
+                        ? ''
+                        : String(manualBodyFatChangePercent),
+                    )
+                    setManualBodyFat((current) => ({ ...current, error: null }))
+                    setIsEditingBodyFat(true)
+                  }}
+                >
+                  {manualBodyFatChangePercent === null ? 'Enter' : 'Edit'}
+                </Button>
+              )}
             </div>
-            <p className="mt-0.5 text-[11px] text-muted">Based on energy balance</p>
+            {isEditingBodyFat ? (
+              <form className="mt-2 space-y-2" onSubmit={handleSaveBodyFatChange}>
+                <div className="flex items-center gap-2">
+                  <input
+                    aria-label="Manual body fat change percentage"
+                    autoFocus
+                    className="min-h-9 w-full min-w-0 rounded-lg border border-line bg-panel px-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                    inputMode="decimal"
+                    onChange={(event) => setBodyFatDraft(event.target.value)}
+                    step="0.01"
+                    type="number"
+                    value={bodyFatDraft}
+                  />
+                  <span className="text-xs text-muted">%</span>
+                </div>
+                <div className="flex gap-1">
+                  <Button size="small" type="submit" icon={Check}>
+                    Save
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="ghost"
+                    icon={X}
+                    onClick={() => {
+                      setIsEditingBodyFat(false)
+                      setManualBodyFat((current) => ({ ...current, error: null }))
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <p
+                  className={`mt-1 text-xl font-bold sm:text-2xl ${
+                    manualBodyFatChangePercent === null ||
+                    manualBodyFatChangePercent === 0
+                      ? 'text-ink'
+                      : manualBodyFatChangePercent < 0
+                        ? 'text-warning'
+                        : 'text-success'
+                  }`}
+                >
+                  {manualBodyFatChangePercent === null
+                    ? '—'
+                    : `${manualBodyFatChangePercent > 0 ? '+' : ''}${manualBodyFatChangePercent}%`}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted">Manual entry</p>
+              </>
+            )}
+            {bodyFatError && (
+              <p className="mt-1 text-[11px] text-danger" role="alert">
+                {bodyFatError}
+              </p>
+            )}
           </div>
         </div>
       )}

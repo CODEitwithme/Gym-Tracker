@@ -4,7 +4,6 @@ import {
   createSavedMeal,
   createMealLog,
 } from '../../db/repositories/nutrition'
-import { createExercise } from '../../db/repositories/exercises'
 import {
   addExerciseSet,
   addWorkoutExercise,
@@ -231,8 +230,6 @@ function countsFromManifest(manifest: DemoManifest): DemoDataCounts {
 
 interface MovementPlan {
   name: string
-  category: Exercise['category']
-  equipment: string
   baseWeightKg: number
   reps: [number, number, number]
   incrementKg: number
@@ -249,45 +246,45 @@ const workoutPlans: WorkoutPlan[] = [
     dayOffset: -6,
     name: 'Demo: Lower-body strength',
     movements: [
-      { name: 'Barbell Squat', category: 'legs', equipment: 'Barbell', baseWeightKg: 55, reps: [10, 8, 8], incrementKg: 2.5 },
-      { name: 'Romanian Deadlift', category: 'legs', equipment: 'Barbell', baseWeightKg: 45, reps: [10, 9, 8], incrementKg: 2.5 },
-      { name: 'Leg Press', category: 'legs', equipment: 'Machine', baseWeightKg: 110, reps: [12, 10, 10], incrementKg: 5 },
+      { name: 'Back Squat', baseWeightKg: 55, reps: [10, 8, 8], incrementKg: 2.5 },
+      { name: 'Romanian Deadlift', baseWeightKg: 45, reps: [10, 9, 8], incrementKg: 2.5 },
+      { name: 'Leg Press', baseWeightKg: 110, reps: [12, 10, 10], incrementKg: 5 },
     ],
   },
   {
     dayOffset: -4,
     name: 'Demo: Push strength',
     movements: [
-      { name: 'Bench Press', category: 'chest', equipment: 'Barbell', baseWeightKg: 45, reps: [10, 8, 8], incrementKg: 2.5 },
-      { name: 'Overhead Press', category: 'shoulders', equipment: 'Barbell', baseWeightKg: 25, reps: [10, 8, 8], incrementKg: 2.5 },
-      { name: 'Incline Dumbbell Press', category: 'chest', equipment: 'Dumbbells', baseWeightKg: 18, reps: [12, 10, 10], incrementKg: 1 },
+      { name: 'Barbell Bench Press', baseWeightKg: 45, reps: [10, 8, 8], incrementKg: 2.5 },
+      { name: 'Overhead Press', baseWeightKg: 25, reps: [10, 8, 8], incrementKg: 2.5 },
+      { name: 'Incline Dumbbell Press', baseWeightKg: 18, reps: [12, 10, 10], incrementKg: 1 },
     ],
   },
   {
     dayOffset: -3,
     name: 'Demo: Back and shoulders',
     movements: [
-      { name: 'Bent-over Row', category: 'back', equipment: 'Barbell', baseWeightKg: 40, reps: [10, 9, 8], incrementKg: 2.5 },
-      { name: 'Lat Pulldown', category: 'back', equipment: 'Cable', baseWeightKg: 45, reps: [12, 10, 10], incrementKg: 2.5 },
-      { name: 'Face Pull', category: 'shoulders', equipment: 'Cable', baseWeightKg: 17.5, reps: [15, 12, 12], incrementKg: 2.5 },
+      { name: 'Barbell Row', baseWeightKg: 40, reps: [10, 9, 8], incrementKg: 2.5 },
+      { name: 'Lat Pulldown', baseWeightKg: 45, reps: [12, 10, 10], incrementKg: 2.5 },
+      { name: 'Face Pull', baseWeightKg: 17.5, reps: [15, 12, 12], incrementKg: 2.5 },
     ],
   },
   {
     dayOffset: -1,
     name: 'Demo: Posterior chain',
     movements: [
-      { name: 'Conventional Deadlift', category: 'legs', equipment: 'Barbell', baseWeightKg: 75, reps: [8, 6, 6], incrementKg: 2.5 },
-      { name: 'Goblet Squat', category: 'legs', equipment: 'Dumbbell', baseWeightKg: 20, reps: [12, 10, 10], incrementKg: 2 },
-      { name: 'Leg Press', category: 'legs', equipment: 'Machine', baseWeightKg: 120, reps: [12, 10, 10], incrementKg: 5 },
+      { name: 'Romanian Deadlift', baseWeightKg: 75, reps: [8, 6, 6], incrementKg: 2.5 },
+      { name: 'Back Squat', baseWeightKg: 20, reps: [12, 10, 10], incrementKg: 2 },
+      { name: 'Leg Curl', baseWeightKg: 120, reps: [12, 10, 10], incrementKg: 5 },
     ],
   },
   {
     dayOffset: 0,
     name: 'Demo: Full-body session',
     movements: [
-      { name: 'Dumbbell Bench Press', category: 'chest', equipment: 'Dumbbells', baseWeightKg: 20, reps: [12, 10, 10], incrementKg: 1 },
-      { name: 'Seated Cable Row', category: 'back', equipment: 'Cable', baseWeightKg: 42.5, reps: [12, 10, 10], incrementKg: 2.5 },
-      { name: 'Goblet Squat', category: 'legs', equipment: 'Dumbbell', baseWeightKg: 22, reps: [12, 10, 10], incrementKg: 2 },
+      { name: 'Dumbbell Bench Press', baseWeightKg: 20, reps: [12, 10, 10], incrementKg: 1 },
+      { name: 'Seated Cable Row', baseWeightKg: 42.5, reps: [12, 10, 10], incrementKg: 2.5 },
+      { name: 'Calf Raise', baseWeightKg: 22, reps: [12, 10, 10], incrementKg: 2 },
     ],
   },
 ]
@@ -457,10 +454,12 @@ export async function seedDemoData(
           .filter((exercise) => exercise.deletedAt === null)
           .toArray()
         const exerciseByName = new Map(
-          exercises.map((exercise) => [exercise.name.trim().toLocaleLowerCase(), exercise]),
+          exercises.map((exercise) => [
+            exercise.name.trim().toLowerCase(),
+            exercise,
+          ]),
         )
         const exerciseIdsByName = new Map<string, string>()
-        const createdExercises: Exercise[] = []
         const requiredMovements = new Map<string, MovementPlan>()
         for (const plan of workoutPlans) {
           for (const movement of plan.movements) {
@@ -468,37 +467,17 @@ export async function seedDemoData(
           }
         }
         for (const movement of requiredMovements.values()) {
-          const key = movement.name.toLocaleLowerCase()
-          const demoKey = `demo · ${movement.name}`.toLocaleLowerCase()
-          const existing = exerciseByName.get(key) ?? exerciseByName.get(demoKey)
-          if (existing) {
-            exerciseIdsByName.set(movement.name, existing.id)
-          } else {
-            manifest.ids.exercises.push(createUUID())
+          const existing = exerciseByName.get(movement.name.toLowerCase())
+          if (!existing) {
+            throw new Error(
+              `The demo exercise "${movement.name}" is missing from the starter library. Upgrade the database and try again.`,
+            )
           }
+          exerciseIdsByName.set(movement.name, existing.id)
         }
         localStorage.setItem(DEMO_MANIFEST_KEY, JSON.stringify(manifest))
-        let exerciseIdIndex = 0
-        for (const movement of requiredMovements.values()) {
-          if (exerciseIdsByName.has(movement.name)) continue
-          const id = manifest.ids.exercises[exerciseIdIndex++]
-          if (!id) throw new Error('A demo exercise ID could not be prepared.')
-          const exercise = await createExercise(
-              {
-                id,
-                name: `Demo · ${movement.name}`,
-                category: movement.category,
-                equipment: movement.equipment,
-              },
-              database,
-            )
-          createdExercises.push(exercise)
-          exerciseIdsByName.set(movement.name, exercise.id)
-        }
-        manifest.ids.exercises = createdExercises.map(({ id }) => id)
 
         const records = emptyRecords()
-        records.exercises.push(...createdExercises)
         let workoutExerciseIdIndex = 0
         let exerciseSetIdIndex = 0
         for (const [workoutIndex, plan] of workoutPlans.entries()) {

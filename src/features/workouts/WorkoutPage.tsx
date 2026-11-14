@@ -5,15 +5,14 @@ import { motion, useReducedMotion } from 'motion/react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { Badge, Button, Card, EmptyState } from '../../components/common'
 import PageContainer from '../../components/layout/PageContainer'
-import { formatLocalDate } from '../../lib/dateTime'
 import { springSmooth } from '../../lib/motion'
 import {
+  cloneWorkoutThunk,
   loadActiveWorkoutThunk,
   startWorkoutThunk,
 } from './workoutThunks'
 import {
   listCompletedWorkoutSummaries,
-  loadWorkoutDetails,
   type WorkoutSummary,
 } from './workoutService'
 import AiLogWorkoutModal from './components/AiLogWorkoutModal'
@@ -126,27 +125,10 @@ function WorkoutPage() {
     e.preventDefault()
     e.stopPropagation()
     try {
-      const details = await loadWorkoutDetails(summary.session.id)
-      if (!details) return
-      const lines = details.exercises.map((item) => {
-        const name = item.workoutExercise.exerciseNameSnapshot
-        const completedSets = item.sets.filter((s) => s.completed)
-        if (completedSets.length === 0) return name
-        const reps = completedSets[0].reps
-        const wt = completedSets[0].weightKg
-        return `${name} ${completedSets.length}x${reps} at ${wt}kg`
-      })
-
-      const repeatPrompt = `Trained today: ${details.session.name}: ${lines.join(', ')}`
-
-      setModalState({
-        open: true,
-        initialPrompt: repeatPrompt,
-        initialSessionName: details.session.name,
-        initialDate: formatLocalDate(new Date()),
-      })
+      const workoutId = await dispatch(cloneWorkoutThunk(summary.session.id)).unwrap()
+      navigate('/workouts/active', { state: { workoutId } })
     } catch {
-      // ignore
+      // Error handled in Redux state
     }
   }
 

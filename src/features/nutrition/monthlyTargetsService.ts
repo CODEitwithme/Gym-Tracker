@@ -21,8 +21,6 @@ export interface MonthlyAdherenceSummary {
   averageDailyCalories: number
   onTrackDaysCount: number
   adherencePercent: number
-  netCalorieBalance: number // sum of (calories - maintenance/target)
-  estimatedWeightChangeKg: number
 }
 
 export async function loadMonthlyAdherenceSummary(
@@ -42,7 +40,6 @@ export async function loadMonthlyAdherenceSummary(
   // 1. Fetch monthly target from DB
   const target = (await getMonthlyCalorieTarget(monthKey, database)) ?? null
   const targetCalories = target?.targetCalories ?? fallbackTargetCalories
-  const tdeeEstimate = target?.tdeeEstimate ?? targetCalories
 
   // 2. Fetch meal logs for this month
   const mealLogs = await database.mealLogs
@@ -63,7 +60,6 @@ export async function loadMonthlyAdherenceSummary(
   let daysLoggedCount = 0
   let totalCaloriesLogged = 0
   let onTrackDaysCount = 0
-  let netCalorieBalance = 0
 
   const tolerance = 100 // +/- 100 kcal is on track
 
@@ -77,7 +73,6 @@ export async function loadMonthlyAdherenceSummary(
     if (cal > 0) {
       daysLoggedCount++
       totalCaloriesLogged += cal
-      netCalorieBalance += cal - tdeeEstimate
 
       if (Math.abs(cal - targetCalories) <= tolerance) {
         status = 'on_track'
@@ -104,9 +99,6 @@ export async function loadMonthlyAdherenceSummary(
   const adherencePercent =
     daysLoggedCount > 0 ? Math.round((onTrackDaysCount / daysLoggedCount) * 100) : 0
 
-  // 7,700 kcal ~= 1 kg body fat
-  const estimatedWeightChangeKg = Number((netCalorieBalance / 7700).toFixed(2))
-
   return {
     monthKey,
     target,
@@ -117,7 +109,5 @@ export async function loadMonthlyAdherenceSummary(
     averageDailyCalories,
     onTrackDaysCount,
     adherencePercent,
-    netCalorieBalance,
-    estimatedWeightChangeKg,
   }
 }

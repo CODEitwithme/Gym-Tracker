@@ -56,9 +56,6 @@ export async function addWorkoutExercise(
       if (!workout || workout.deletedAt !== null) {
         throw new Error(`Active workout session "${input.workoutId}" was not found.`)
       }
-      if (workout.status !== 'in_progress') {
-        throw new Error('Exercises can only be added to an in-progress workout.')
-      }
       if (!exercise || exercise.deletedAt !== null) {
         throw new Error(`Active exercise "${input.exerciseId}" was not found.`)
       }
@@ -112,9 +109,6 @@ export async function updateWorkoutExercise(
       if (!workout || workout.deletedAt !== null) {
         throw new Error(`Active workout session "${existing.workoutId}" was not found.`)
       }
-      if (workout.status !== 'in_progress') {
-        throw new Error('Exercises can only be changed in an in-progress workout.')
-      }
       const updated = { ...existing, ...changes, updatedAt: createTimestamp() }
       assertNonNegativeInteger(updated.order, 'Exercise order')
       if (typeof updated.notes !== 'string') {
@@ -151,9 +145,6 @@ export async function swapWorkoutExerciseOrder(
       const workout = await database.workoutSessions.get(first.workoutId)
       if (!workout || workout.deletedAt !== null) {
         throw new Error(`Active workout session "${first.workoutId}" was not found.`)
-      }
-      if (workout.status !== 'in_progress') {
-        throw new Error('Exercises can only be reordered in an in-progress workout.')
       }
       await Promise.all([
         database.workoutExercises.put({
@@ -205,9 +196,6 @@ async function assertActiveWorkoutExercise(
     throw new Error(
       `Active workout session "${workoutExercise.workoutId}" was not found.`,
     )
-  }
-  if (workout.status !== 'in_progress') {
-    throw new Error('Sets can only be changed in an in-progress workout.')
   }
 }
 

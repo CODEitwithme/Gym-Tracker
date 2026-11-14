@@ -39,7 +39,7 @@ import type {
   MealLog,
   MealType,
 } from './types'
-import LogMealModal from './components/LogMealModal'
+import LogMealModal, { type MealLogModalTab } from './components/LogMealModal'
 import EditMealLogModal from './components/EditMealLogModal'
 import GoalsModal from './components/GoalsModal'
 import { TdeeCalculatorModal } from './components/TdeeCalculatorModal'
@@ -107,7 +107,7 @@ function NutritionPage() {
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false)
   const [isTdeeModalOpen, setIsTdeeModalOpen] = useState(false)
   const [logModalOpen, setLogModalOpen] = useState(false)
-  const [logModalTab, setLogModalTab] = useState<'ai' | 'library'>('library')
+  const [logModalTab, setLogModalTab] = useState<MealLogModalTab>('direct')
   const [logMealType, setLogMealType] = useState<MealType>('breakfast')
   const [editingLog, setEditingLog] = useState<MealLog | null>(null)
   const [logToDelete, setLogToDelete] = useState<MealLog | null>(null)
@@ -222,7 +222,7 @@ function NutritionPage() {
             icon={Plus}
             onClick={() => {
               setLogMealType('breakfast')
-              setLogModalTab('library')
+              setLogModalTab('direct')
               setLogModalOpen(true)
             }}
           >

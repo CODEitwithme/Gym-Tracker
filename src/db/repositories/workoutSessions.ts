@@ -118,10 +118,7 @@ export async function updateWorkoutSession(
   return database.transaction('rw', database.workoutSessions, async () => {
     const existing = await database.workoutSessions.get(id)
     if (!existing || existing.deletedAt !== null) {
-      throw new Error(`Active workout session "${id}" was not found.`)
-    }
-    if (existing.status === 'completed') {
-      throw new Error('Completed workouts cannot be modified.')
+      throw new Error(`Workout session "${id}" was not found.`)
     }
     const updated = { ...existing, ...changes, updatedAt: createTimestamp() }
     validateSession(updated)

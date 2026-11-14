@@ -22,6 +22,7 @@ import {
   createCustomExercise,
   deleteWorkoutSession,
   finishWorkout,
+  findBestExerciseMatch,
   getPreviousPerformance,
   listCompletedWorkoutSummaries,
   moveWorkoutExercise,
@@ -152,7 +153,7 @@ describe('workout service persistence', () => {
         testDatabase,
       ),
     ).rejects.toThrow(/not found/)
-    expect(await testDatabase.exercises.count()).toBe(0)
+    expect(await testDatabase.exercises.count()).toBe(25)
     expect(await testDatabase.workoutExercises.count()).toBe(0)
   })
 
@@ -488,8 +489,8 @@ describe('workout service persistence', () => {
     expect(await loadWorkoutDetails(workout.id, testDatabase)).toBeUndefined()
   })
 
-  it('prevents modifying or deleting sets on a completed workout', async () => {
-    const workout = await makeInProgressWorkout(testDatabase, 'Immutable session')
+  it('allows modifying workout name, notes, sets, and exercises on a completed workout', async () => {
+    const workout = await makeInProgressWorkout(testDatabase, 'Session to edit')
     const exercise = await makeExercise(testDatabase)
     const link = await addExerciseToWorkout(workout.id, exercise.id, testDatabase)
     const set = await addExerciseSet(
@@ -504,44 +505,35 @@ describe('workout service persistence', () => {
     )
     await finishWorkout(workout.id, testDatabase)
 
-    await expect(
-      softDeleteExerciseSet(set.id, testDatabase),
-    ).rejects.toThrow(/in-progress/)
-    await expect(
-      updateExerciseSet(set.id, { weightKg: 25 }, testDatabase),
-    ).rejects.toThrow(/in-progress/)
-    await expect(
-      addExerciseSet(
-        {
-          workoutExerciseId: link.id,
-          setNumber: 2,
-          weightKg: 20,
-          reps: 8,
-          completed: false,
-        },
-        testDatabase,
-      ),
-    ).rejects.toThrow(/in-progress/)
+    // Updating a set on completed workout succeeds
+    const updatedSet = await updateExerciseSet(set.id, { weightKg: 25 }, testDatabase)
+    expect(updatedSet.weightKg).toBe(25)
 
-    const completedSession = await testDatabase.workoutSessions.get(workout.id)
-    expect(completedSession).toBeDefined()
-    await expect(
-      updateWorkoutSession(
-        workout.id,
-        { name: 'Changed after completion' },
-        testDatabase,
-      ),
-    ).rejects.toThrow(/Completed workouts cannot be modified/)
-    await expect(
-      updateWorkoutSession(
-        workout.id,
-        { status: 'in_progress', completedAt: null },
-        testDatabase,
-      ),
-    ).rejects.toThrow(/Completed workouts cannot be modified/)
-    expect(await testDatabase.workoutSessions.get(workout.id)).toEqual(
-      completedSession,
+    // Adding a set on completed workout succeeds
+    const newSet = await addExerciseSet(
+      {
+        workoutExerciseId: link.id,
+        setNumber: 2,
+        weightKg: 30,
+        reps: 6,
+        completed: true,
+      },
+      testDatabase,
     )
+    expect(newSet.setNumber).toBe(2)
+
+    // Updating session name and notes on completed workout succeeds
+    const renamed = await updateWorkoutSession(
+      workout.id,
+      { name: 'Changed after completion', notes: 'Added notes later' },
+      testDatabase,
+    )
+    expect(renamed.name).toBe('Changed after completion')
+    expect(renamed.notes).toBe('Added notes later')
+
+    // Deleting a set on completed workout succeeds
+    const deletedSet = await softDeleteExerciseSet(newSet.id, testDatabase)
+    expect(deletedSet.deletedAt).not.toBeNull()
   })
 
   it('rejects a completion timestamp earlier than the workout start', async () => {
@@ -661,6 +653,18 @@ describe('workout Redux async workflows', () => {
 })
 
 describe('custom exercise flow', () => {
+  it('reuses a current exercise when the AI name has a minor spelling mistake', async () => {
+    const match = await findBestExerciseMatch(
+      'Barbel Bench Press',
+      testDatabase,
+    )
+
+    expect(match?.name).toBe('Barbell Bench Press')
+    expect(
+      await findBestExerciseMatch('unlisted movement', testDatabase),
+    ).toBeUndefined()
+  })
+
   it('creates custom exercises through the existing typed repository', async () => {
     const exercise = await createCustomExercise(
       { name: 'Custom movement', category: 'core', equipment: null },
@@ -683,7 +687,7 @@ describe('custom exercise flow', () => {
     ).rejects.toThrow(/already exists/)
 
     const overheadPress = await createCustomExercise(
-      { name: 'Overhead Press', category: 'shoulders', equipment: 'Barbell' },
+      { name: 'Arnold Press', category: 'shoulders', equipment: 'Dumbbell' },
       testDatabase,
     )
     await expect(

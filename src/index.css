@@ -186,6 +186,25 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Ensure native select and option popups match dark theme */
+select {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] select {
+  color-scheme: light;
+}
+
+select option {
+  background-color: #121217;
+  color: #f4f4f5;
+}
+
+:root[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #09090b;
+}
+
 ::selection {
   color: var(--theme-accent-fg);
   background: var(--theme-accent);

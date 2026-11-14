@@ -30,12 +30,6 @@ import {
 import { incrementSteps } from '../../db/repositories/bodyMetrics'
 import { LogWeightModal } from '../body-metrics/components/LogWeightModal'
 import { LogStepsModal } from '../body-metrics/components/LogStepsModal'
-import {
-  isGoogleFitConnected,
-  syncStepsFromGoogleFit,
-  getGoogleFitConfig,
-} from '../integrations/googleFitService'
-import { GoogleFitModal } from '../integrations/components/GoogleFitModal'
 import { formatLocalDate } from '../../lib/dateTime'
 
 function localDateFromString(value: string): Date {
@@ -76,10 +70,6 @@ export default function DashboardPage() {
   const [quickLogOpen, setQuickLogOpen] = useState(false)
   const [logWeightOpen, setLogWeightOpen] = useState(false)
   const [logStepsOpen, setLogStepsOpen] = useState(false)
-  const [googleFitModalOpen, setGoogleFitModalOpen] = useState(false)
-  const [googleFitSyncing, setGoogleFitSyncing] = useState(false)
-  const [googleFitConnected, setGoogleFitConnected] = useState(isGoogleFitConnected())
-  const [googleFitError, setGoogleFitError] = useState<string | null>(null)
   const [bodyMetrics, setBodyMetrics] = useState<TodayBodyMetrics | null>(null)
 
   const {
@@ -111,21 +101,6 @@ export default function DashboardPage() {
   useEffect(() => {
     void dispatch(loadDashboardThunk(period))
     void fetchBodyMetrics()
-
-    // Auto-sync simulated steps in the background when enabled.
-    const fitConfig = getGoogleFitConfig()
-    if (fitConfig.autoSync && isGoogleFitConnected()) {
-      syncStepsFromGoogleFit({ days: 7 })
-        .then(() => {
-          setGoogleFitError(null)
-          return fetchBodyMetrics()
-        })
-        .catch((syncError: unknown) => {
-          setGoogleFitError(
-            syncError instanceof Error ? syncError.message : 'Demo step sync failed.',
-          )
-        })
-    }
   }, [dispatch, period])
 
   useEffect(() => {
@@ -148,29 +123,6 @@ export default function DashboardPage() {
   const handleRefresh = () => {
     void dispatch(loadDashboardThunk(period))
     void fetchBodyMetrics()
-    setGoogleFitConnected(isGoogleFitConnected())
-  }
-
-  const handleSyncGoogleFit = async () => {
-    if (!isGoogleFitConnected()) {
-      setGoogleFitError(null)
-      setGoogleFitModalOpen(true)
-      return
-    }
-    setGoogleFitSyncing(true)
-    setGoogleFitError(null)
-    try {
-      await syncStepsFromGoogleFit({ days: 7 })
-      await fetchBodyMetrics()
-      setGoogleFitConnected(true)
-    } catch (syncError) {
-      setGoogleFitError(
-        syncError instanceof Error ? syncError.message : 'Demo step sync failed.',
-      )
-      setGoogleFitModalOpen(true)
-    } finally {
-      setGoogleFitSyncing(false)
-    }
   }
 
   const handleQuickAddSteps = async (amount: number) => {
@@ -220,15 +172,10 @@ export default function DashboardPage() {
           workoutStatus={workoutStatus}
           workoutError={workoutError}
           bodyMetrics={bodyMetrics}
-          googleFitConnected={googleFitConnected}
-          googleFitSyncing={googleFitSyncing}
-          googleFitError={googleFitError}
           onStartWorkout={handleStartWorkout}
           onOpenQuickLog={() => setQuickLogOpen(true)}
           onOpenLogWeight={() => setLogWeightOpen(true)}
           onOpenLogSteps={() => setLogStepsOpen(true)}
-          onSyncGoogleFit={handleSyncGoogleFit}
-          onOpenGoogleFit={() => setGoogleFitModalOpen(true)}
           onQuickAddSteps={handleQuickAddSteps}
         />
       ) : null}
@@ -246,33 +193,13 @@ export default function DashboardPage() {
       {/* Log Steps Modal */}
       <LogStepsModal
         open={logStepsOpen}
-        onClose={() => {
-          setLogStepsOpen(false)
-          setGoogleFitConnected(isGoogleFitConnected())
-        }}
+        onClose={() => setLogStepsOpen(false)}
         initialCount={bodyMetrics?.todaySteps?.stepCount}
         initialTarget={bodyMetrics?.todaySteps?.targetSteps ?? 10000}
         onSaved={() => {
           void fetchBodyMetrics()
-          setGoogleFitConnected(isGoogleFitConnected())
         }}
       />
-
-      {/* Google Fit Modal */}
-      {googleFitModalOpen && (
-        <GoogleFitModal
-          open
-          onClose={() => {
-            setGoogleFitModalOpen(false)
-            setGoogleFitConnected(isGoogleFitConnected())
-          }}
-          onSynced={() => {
-            void fetchBodyMetrics()
-            setGoogleFitConnected(true)
-            setGoogleFitError(null)
-          }}
-        />
-      )}
 
       {/* Floating Action Button (FAB) for AI Quick-Log */}
       <button
@@ -315,15 +242,10 @@ function DashboardView({
   workoutStatus,
   workoutError,
   bodyMetrics,
-  googleFitConnected,
-  googleFitSyncing,
-  googleFitError,
   onStartWorkout,
   onOpenQuickLog,
   onOpenLogWeight,
   onOpenLogSteps,
-  onSyncGoogleFit,
-  onOpenGoogleFit,
   onQuickAddSteps,
 }: {
   analytics: DashboardAnalytics
@@ -332,15 +254,10 @@ function DashboardView({
   workoutStatus: 'idle' | 'loading' | 'saving' | 'failed'
   workoutError: string | null
   bodyMetrics: TodayBodyMetrics | null
-  googleFitConnected: boolean
-  googleFitSyncing: boolean
-  googleFitError: string | null
   onStartWorkout: () => Promise<void>
   onOpenQuickLog: () => void
   onOpenLogWeight: () => void
   onOpenLogSteps: () => void
-  onSyncGoogleFit: () => Promise<void>
-  onOpenGoogleFit: () => void
   onQuickAddSteps: (amount: number) => Promise<void>
 }) {
   const greeting = getGreeting()
@@ -623,41 +540,12 @@ function DashboardView({
 
           {/* Card C: Today's Steps */}
           <Card className="flex flex-col justify-between">
-            {googleFitError && (
-              <p
-                role="alert"
-                className="mb-3 rounded-lg border border-danger/20 bg-danger-soft p-2 text-xs text-danger"
-              >
-                {googleFitError}
-              </p>
-            )}
             <div>
               <div className="flex items-center justify-between">
                 <span className="flex size-9 items-center justify-center rounded-xl bg-surface text-accent">
                   <Footprints size={18} aria-hidden="true" />
                 </span>
                 <div className="flex items-center gap-1.5">
-                  {googleFitConnected ? (
-                    <button
-                      type="button"
-                      onClick={() => void onSyncGoogleFit()}
-                      disabled={googleFitSyncing}
-                      title="Sync sample steps"
-                      className="flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-500 hover:bg-emerald-500/20 transition-colors"
-                    >
-                      <RefreshCw size={11} className={googleFitSyncing ? 'animate-spin' : ''} />
-                      <span>Demo Sync</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={onOpenGoogleFit}
-                      title="Configure demo step sync"
-                      className="rounded-md border border-line bg-surface px-1.5 py-0.5 text-[11px] text-muted hover:text-accent hover:border-accent transition-colors"
-                    >
-                      Step Demo
-                    </button>
-                  )}
                   {bodyMetrics?.todaySteps ? (
                     bodyMetrics.todaySteps.stepCount >= bodyMetrics.todaySteps.targetSteps ? (
                       <Badge variant="success">Goal Met</Badge>
@@ -710,21 +598,21 @@ function DashboardView({
                   <button
                     type="button"
                     onClick={() => void onQuickAddSteps(500)}
-                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover transition-colors"
+                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover active:scale-95 transition-all"
                   >
                     +500
                   </button>
                   <button
                     type="button"
                     onClick={() => void onQuickAddSteps(1000)}
-                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover transition-colors"
+                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover active:scale-95 transition-all"
                   >
                     +1k
                   </button>
                   <button
                     type="button"
                     onClick={() => void onQuickAddSteps(2500)}
-                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover transition-colors"
+                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover active:scale-95 transition-all"
                   >
                     +2.5k
                   </button>
@@ -740,7 +628,7 @@ function DashboardView({
                   className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
                 >
                   <Plus size={13} aria-hidden="true" />
-                  <span>{googleFitConnected ? 'Sync demo / adjust steps' : 'Log steps / demo'}</span>
+                  <span>Log steps</span>
                 </button>
                 <Link
                   to="/progress?tab=body"

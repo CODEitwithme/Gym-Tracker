@@ -160,21 +160,16 @@ describe('versioned JSON backup', () => {
     })
   })
 
-  it('exports and validates an empty database backup', async () => {
+  it('exports the starter exercise library in an otherwise empty backup', async () => {
     const backup = await createBackup(testDatabase)
     const parsed = validateBackup(backup)
-    expect(parsed.data).toEqual({
-      workoutSessions: [],
-      exercises: [],
-      workoutExercises: [],
-      exerciseSets: [],
-      savedMeals: [],
-      mealLogs: [],
-      aiWorkoutLogs: [],
-      weightLogs: [],
-      stepLogs: [],
-      monthlyCalorieTargets: [],
-    })
+    const { exercises, ...otherTables } = parsed.data
+
+    expect(exercises).toHaveLength(25)
+    expect(exercises.map(({ name }) => name)).toContain('Barbell Bench Press')
+    expect(Object.values(otherTables).every((records) => records.length === 0)).toBe(
+      true,
+    )
   })
 
   it('reports read failures and leaves persisted records untouched', async () => {
@@ -289,7 +284,7 @@ describe('backup import strategies', () => {
 
     const second = await importBackup(backup, 'merge', testDatabase)
     expect(Object.values(second.inserted).every((count) => count === 0)).toBe(true)
-    expect(Object.values(second.alreadyPresent).reduce((sum, count) => sum + count, 0)).toBe(6)
+    expect(Object.values(second.alreadyPresent).reduce((sum, count) => sum + count, 0)).toBe(31)
   })
 
   it('stops merge before writing when IDs conflict', async () => {
@@ -325,7 +320,7 @@ describe('backup import strategies', () => {
     const replacement = await createBackup(sourceDatabase)
 
     const result = await importBackup(replacement, 'replace', testDatabase)
-    expect(Object.values(result.inserted)).toEqual([1, 1, 1, 1, 1, 1, 0, 0, 0, 0])
+    expect(Object.values(result.inserted)).toEqual([1, 26, 1, 1, 1, 1, 0, 0, 0, 0])
     expect(await testDatabase.workoutSessions.get(original.workout.id)).toBeUndefined()
     expect(
       await testDatabase.workoutSessions.get(replacementRecords.workout.id),

@@ -11,6 +11,7 @@ import {
   testAiConnection,
 } from './aiLoggerService'
 import { db } from '../../db/database'
+import { createExercise } from '../../db/repositories/exercises'
 import type { ConfirmedMeal, ConfirmedWorkout } from './types'
 
 describe('aiLoggerService', () => {
@@ -269,6 +270,33 @@ describe('aiLoggerService', () => {
       expect(set.reps).toBe(10)
       expect(set.completed).toBe(true)
     }
+  })
+
+  it('reuses an existing exercise when the AI name has a spelling mistake', async () => {
+    const existing = await createExercise({
+      name: 'Barbell Bench Press',
+      category: 'chest',
+      equipment: 'Barbell',
+    })
+
+    const session = await saveAiWorkout({
+      exercise: 'Barbel Bench Press',
+      weight: 60,
+      unit: 'kg',
+      reps: 8,
+      sets: 3,
+      durationSeconds: null,
+      notes: '',
+    })
+
+    const exercises = await db.exercises.toArray()
+    const workoutExercises = await db.workoutExercises
+      .where('workoutId')
+      .equals(session.id)
+      .toArray()
+    expect(exercises).toHaveLength(1)
+    expect(workoutExercises).toHaveLength(1)
+    expect(workoutExercises[0].exerciseId).toBe(existing.id)
   })
 
   // Test 9: saveAiWorkout correctly converts lbs to kg (rounded to 2 decimal places)

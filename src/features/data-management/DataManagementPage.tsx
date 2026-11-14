@@ -382,50 +382,6 @@ function DataManagementPage() {
       )}
 
       <div className="space-y-6">
-        <section aria-labelledby="demo-data-title">
-          <Card
-            title="Seven days of demo history"
-            description="Add realistic workouts, nutrition history, weight logs, steps, and calorie targets to exercise the dashboard, progress analytics, and charts."
-            actions={<Badge variant="warning">Fictional data</Badge>}
-          >
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-              <div className="min-w-0">
-                <h2 id="demo-data-title" className="sr-only">
-                  Demo history
-                </h2>
-                <p className="text-sm leading-6 text-muted">
-                  This adds clearly labeled fictional workouts, exercises, saved
-                  meals, meal logs, 7 daily weigh-ins, daily step counts, and a monthly calorie target
-                  covering today and the preceding six local calendar days. Existing records are not replaced or reset.
-                  Loading again will not create duplicates.
-                </p>
-                <p className="mt-2 text-sm font-medium text-warning">
-                  Demo records are written to this browser only after you confirm.
-                  Removing demo data affects only records tracked by this feature.
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-                <Button
-                  size="large"
-                  icon={Dumbbell}
-                  disabled={busy}
-                  onClick={() => setDemoConfirmation('load')}
-                >
-                  Load 7 Days of Demo Data
-                </Button>
-                <Button
-                  variant="outline"
-                  icon={Trash2}
-                  disabled={busy}
-                  onClick={() => setDemoConfirmation('remove')}
-                >
-                  Remove demo data
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </section>
-
         <section aria-labelledby="storage-persistence-title">
           <Card
             title="Storage health & persistence"
@@ -640,6 +596,47 @@ function DataManagementPage() {
               CSV exports omit soft-deleted records; the full JSON backup preserves them.
             </p>
           </Card>
+        </section>
+
+        {/* Collapsible Demo / Testing tools */}
+        <section aria-labelledby="demo-data-title" className="pt-2">
+          <details className="group rounded-2xl border border-line bg-surface/50 p-4 transition-all">
+            <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-muted hover:text-ink">
+              <span>Developer &amp; Testing Tools (Sample Demo Data)</span>
+              <span className="text-xs font-normal text-muted group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="mt-4 pt-4 border-t border-line">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="min-w-0">
+                  <h2 id="demo-data-title" className="sr-only">
+                    Demo history
+                  </h2>
+                  <p className="text-sm leading-6 text-muted">
+                    Add clearly labeled fictional workouts, exercises, saved meals, meal logs, 7 daily weigh-ins, and step counts covering today and the preceding six calendar days.
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                  <Button
+                    size="medium"
+                    icon={Dumbbell}
+                    disabled={busy}
+                    onClick={() => setDemoConfirmation('load')}
+                  >
+                    Load 7 Days Demo Data
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="small"
+                    icon={Trash2}
+                    disabled={busy}
+                    onClick={() => setDemoConfirmation('remove')}
+                  >
+                    Remove demo data
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </details>
         </section>
 
         <Card className="bg-surface">

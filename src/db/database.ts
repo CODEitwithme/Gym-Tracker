@@ -1,6 +1,10 @@
 import Dexie from 'dexie'
 import type { GymTrackerTables } from './migrations'
-import { applyMigrations, DATABASE_VERSION } from './migrations'
+import {
+  applyMigrations,
+  DATABASE_VERSION,
+  seedDefaultExercises,
+} from './migrations'
 import type { AiWorkoutLog } from '../features/ai-logger/types'
 
 export class GymTrackerDatabase extends Dexie implements GymTrackerTables {
@@ -18,6 +22,7 @@ export class GymTrackerDatabase extends Dexie implements GymTrackerTables {
   constructor(name = 'gym-tracker') {
     super(name)
     applyMigrations(this)
+    this.on('populate', seedDefaultExercises)
   }
 }
 

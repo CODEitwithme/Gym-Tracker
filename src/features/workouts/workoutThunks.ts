@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit'
 import {
+  cloneWorkoutSession,
   deleteWorkoutSession,
   finishWorkout,
   loadActiveWorkout,
@@ -9,6 +10,19 @@ import {
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The workout operation failed.'
 }
+
+export const cloneWorkoutThunk = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>('workoutUi/clone', async (sourceWorkoutId, { rejectWithValue }) => {
+  try {
+    const workout = await cloneWorkoutSession(sourceWorkoutId)
+    return workout.id
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error))
+  }
+})
 
 export const loadActiveWorkoutThunk = createAsyncThunk<
   string | null,

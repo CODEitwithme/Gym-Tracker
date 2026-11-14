@@ -13,7 +13,7 @@ import {
   addExerciseToWorkout,
   createCustomExercise,
   createSet,
-  findExercises,
+  findBestExerciseMatch,
 } from '../workoutService'
 
 export interface AiActiveWorkoutModalProps {
@@ -122,10 +122,7 @@ export function AiActiveWorkoutModal({
 
     try {
       for (const item of exerciseItems) {
-        const found = await findExercises(item.exercise)
-        let exercise = found.find(
-          (e) => e.name.toLowerCase() === item.exercise.toLowerCase().trim(),
-        )
+        let exercise = await findBestExerciseMatch(item.exercise)
         if (!exercise) {
           exercise = await createCustomExercise({
             name: item.exercise.trim(),

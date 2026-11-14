@@ -191,6 +191,19 @@ export async function saveWorkoutName(
   return updateWorkoutSession(workoutId, { name }, database)
 }
 
+export async function updateWorkoutSessionMetadata(
+  workoutId: string,
+  updates: {
+    name?: string
+    notes?: string
+    startedAt?: string
+    completedAt?: string | null
+  },
+  database: GymTrackerDatabase = db,
+): Promise<WorkoutSession> {
+  return updateWorkoutSession(workoutId, updates, database)
+}
+
 export async function saveWorkoutNotes(
   workoutId: string,
   notes: string,
@@ -272,6 +285,69 @@ export async function findExercises(
     : listActiveExercises(database)
 }
 
+function normalizeExerciseName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+function editDistance(left: string, right: string): number {
+  const distances = Array.from(
+    { length: left.length + 1 },
+    (_, row) => Array.from({ length: right.length + 1 }, (_, column) =>
+      row === 0 ? column : column === 0 ? row : 0,
+    ),
+  )
+
+  for (let row = 1; row <= left.length; row++) {
+    for (let column = 1; column <= right.length; column++) {
+      const substitutionCost =
+        left[row - 1] === right[column - 1] ? 0 : 1
+      distances[row][column] = Math.min(
+        distances[row - 1][column] + 1,
+        distances[row][column - 1] + 1,
+        distances[row - 1][column - 1] + substitutionCost,
+      )
+    }
+  }
+
+  return distances[left.length][right.length]
+}
+
+export async function findBestExerciseMatch(
+  name: string,
+  database: GymTrackerDatabase = db,
+): Promise<Exercise | undefined> {
+  const normalizedName = normalizeExerciseName(name)
+  if (!normalizedName) return undefined
+
+  const exercises = await listActiveExercises(database)
+  const exactMatch = exercises.find(
+    (exercise) => normalizeExerciseName(exercise.name) === normalizedName,
+  )
+  if (exactMatch) return exactMatch
+  if (normalizedName.length < 5) return undefined
+
+  const maxDistance = normalizedName.length >= 10 ? 2 : 1
+  const closeMatches = exercises
+    .map((exercise) => ({
+      exercise,
+      distance: editDistance(
+        normalizedName,
+        normalizeExerciseName(exercise.name),
+      ),
+    }))
+    .filter(({ distance }) => distance > 0 && distance <= maxDistance)
+    .sort((left, right) => left.distance - right.distance)
+
+  if (
+    closeMatches.length === 0 ||
+    closeMatches[1]?.distance === closeMatches[0].distance
+  ) {
+    return undefined
+  }
+
+  return closeMatches[0].exercise
+}
+
 export async function createSet(
   input: {
     workoutExerciseId: string
@@ -351,3 +427,38 @@ export async function getPreviousPerformance(
   }
   return undefined
 }
+
+export async function cloneWorkoutSession(
+  sourceWorkoutId: string,
+  database: GymTrackerDatabase = db,
+): Promise<WorkoutSession> {
+  const source = await loadWorkoutDetails(sourceWorkoutId, database)
+  if (!source) {
+    throw new Error('Source workout could not be found.')
+  }
+
+  const newSession = await startWorkout(source.session.name, database)
+
+  for (const item of source.exercises) {
+    const workoutExercise = await addExerciseToWorkout(
+      newSession.id,
+      item.workoutExercise.exerciseId,
+      database,
+    )
+    for (const set of item.sets) {
+      await createSet(
+        {
+          workoutExerciseId: workoutExercise.id,
+          setNumber: set.setNumber,
+          weightKg: set.weightKg,
+          reps: set.reps,
+          completed: false,
+        },
+        database,
+      )
+    }
+  }
+
+  return newSession
+}
+

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Mic, MicOff, Plus, Search, Sparkles } from 'lucide-react'
-import { Badge, Button, Input, Modal } from '../../../components/common'
+import { Mic, MicOff, Plus, Search, Sparkles, Utensils } from 'lucide-react'
+import { Button, Input, Modal } from '../../../components/common'
 import { formatLocalDate } from '../../../lib/dateTime'
 import { scaleNutrition } from '../../../lib/nutrition'
 import {
@@ -18,12 +18,14 @@ import { ParsedMealPreview } from '../../ai-logger/components/ParsedMealPreview'
 import { useVoiceDictation } from '../../workouts/useVoiceDictation'
 import type { ConfirmedMeal, ParsedMeal } from '../../ai-logger/types'
 
+export type MealLogModalTab = 'direct' | 'library' | 'ai'
+
 interface LogMealModalProps {
   open: boolean
   onClose: () => void
   initialDate?: string
   initialMealType?: MealType
-  initialTab?: 'ai' | 'library'
+  initialTab?: MealLogModalTab
   initialMeal?: SavedMeal | null
   onLogMeal: (input: {
     savedMealId: string
@@ -47,21 +49,14 @@ function LogMealDialog({
   onClose,
   initialDate,
   initialMealType = 'breakfast',
-  initialTab = 'library',
+  initialTab = 'direct',
   initialMeal,
   onLogMeal,
   onCreateSavedMeal,
   onLogAiSuccess,
 }: Omit<LogMealModalProps, 'open'>) {
-  const [activeTab, setActiveTab] = useState<'ai' | 'library'>(initialTab)
+  const [activeTab, setActiveTab] = useState<MealLogModalTab>(initialTab)
   const [mealType, setMealType] = useState<MealType>(initialMealType)
-  const [query, setQuery] = useState('')
-  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([])
-  const [loadingMeals, setLoadingMeals] = useState(true)
-  const [selectedMeal, setSelectedMeal] = useState<SavedMeal | null>(
-    () => initialMeal ?? null,
-  )
-  const [portionPercent, setPortionPercent] = useState('100')
   const [date, setDate] = useState(() => initialDate ?? formatLocalDate(new Date()))
   const [time, setTime] = useState(() => {
     const now = new Date()
@@ -69,6 +64,22 @@ function LogMealDialog({
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Direct quick log state
+  const [directName, setDirectName] = useState('')
+  const [directCalories, setDirectCalories] = useState('')
+  const [directProtein, setDirectProtein] = useState('')
+  const [directCarbs, setDirectCarbs] = useState('')
+  const [directFat, setDirectFat] = useState('')
+
+  // Saved meals library state
+  const [query, setQuery] = useState('')
+  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([])
+  const [loadingMeals, setLoadingMeals] = useState(true)
+  const [selectedMeal, setSelectedMeal] = useState<SavedMeal | null>(
+    () => initialMeal ?? null,
+  )
+  const [portionPercent, setPortionPercent] = useState('100')
   const [createModalOpen, setCreateModalOpen] = useState(false)
 
   // AI Quick Log State
@@ -142,13 +153,64 @@ function LogMealDialog({
   const computeConsumedIsoString = (): string | null => {
     if (!date) return null
     const [hours, minutes] = (time || '12:00').split(':').map(Number)
-    const [year, month, day] = date.split('-').map(Number)
-    const consumedDate = new Date(year, month - 1, day, hours, minutes, 0, 0)
+    const [year, dayMonth, day] = date.split('-').map(Number)
+    const consumedDate = new Date(year, dayMonth - 1, day, hours, minutes, 0, 0)
     if (Number.isNaN(consumedDate.getTime())) return null
     return consumedDate.toISOString()
   }
 
-  const handleLog = async () => {
+  const handleDirectSubmit = async () => {
+    if (saving) return
+    const nameTrimmed = directName.trim()
+    if (!nameTrimmed) {
+      setError('Please enter a meal name (e.g. Chicken & Rice).')
+      return
+    }
+
+    const cal = Number(directCalories)
+    if (!directCalories.trim() || !Number.isFinite(cal) || cal < 0) {
+      setError('Please enter a valid calorie amount (0 or greater).')
+      return
+    }
+
+    const prot = Number(directProtein) || 0
+    const carbs = Number(directCarbs) || 0
+    const fat = Number(directFat) || 0
+
+    const consumedAt = computeConsumedIsoString()
+    if (!consumedAt) {
+      setError('Invalid date or time.')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    try {
+      const meal = await onCreateSavedMeal({
+        name: nameTrimmed,
+        servingDescription: '1 serving',
+        calorieSource: 'manual',
+        calories: Math.round(cal),
+        proteinG: Math.round(prot),
+        carbsG: Math.round(carbs),
+        fatG: Math.round(fat),
+      })
+
+      await onLogMeal({
+        savedMealId: meal.id,
+        consumedAt,
+        mealType,
+        portionPercent: 100,
+      })
+      onClose()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Failed to log meal.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleLibraryLog = async () => {
     if (saving) return
     if (!selectedMeal) {
       setError('Please select a meal from your saved meals library.')
@@ -253,7 +315,7 @@ function LogMealDialog({
     }
   }
 
-  const handleCreatedMeal = async (newMealInput: {
+  const handleCreatedSavedMeal = async (newMealInput: {
     name: string
     servingDescription: string
     calorieSource: 'manual' | 'macro_estimate'
@@ -271,7 +333,6 @@ function LogMealDialog({
   const renderFooter = () => {
     if (activeTab === 'ai') {
       if (parsedMeal) {
-        // ParsedMealPreview provides its own Confirm and Cancel buttons
         return undefined
       }
       return (
@@ -291,6 +352,23 @@ function LogMealDialog({
       )
     }
 
+    if (activeTab === 'direct') {
+      return (
+        <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
+          <Button variant="ghost" disabled={saving} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            loading={saving}
+            disabled={saving || !directName.trim() || !directCalories.trim()}
+            onClick={() => void handleDirectSubmit()}
+          >
+            Log Meal
+          </Button>
+        </div>
+      )
+    }
+
     return (
       <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
         <Button variant="ghost" disabled={saving} onClick={onClose}>
@@ -299,9 +377,9 @@ function LogMealDialog({
         <Button
           loading={saving}
           disabled={saving || !selectedMeal}
-          onClick={() => void handleLog()}
+          onClick={() => void handleLibraryLog()}
         >
-          Log meal
+          Log from Library
         </Button>
       </div>
     )
@@ -340,312 +418,289 @@ function LogMealDialog({
           <div className="flex border-b border-line gap-4">
             <button
               type="button"
+              onClick={() => setActiveTab('direct')}
+              className={`flex items-center gap-1.5 pb-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'direct'
+                  ? 'border-accent text-accent font-semibold'
+                  : 'border-transparent text-muted hover:text-ink'
+              }`}
+            >
+              <Utensils className="size-4" />
+              <span>Quick Entry</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('library')}
-              className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 pb-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'library'
                   ? 'border-accent text-accent font-semibold'
                   : 'border-transparent text-muted hover:text-ink'
               }`}
             >
               <Search className="size-4" />
-              Saved & Custom
+              <span>Saved Meals</span>
             </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('ai')}
-              className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 pb-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'ai'
                   ? 'border-accent text-accent font-semibold'
                   : 'border-transparent text-muted hover:text-ink'
               }`}
             >
               <Sparkles className="size-4" />
-              AI Quick Log
+              <span>Log with AI</span>
             </button>
           </div>
 
-          {/* Common Date & Category selectors */}
-          <fieldset>
-            <legend className="mb-1.5 block text-sm font-medium text-ink">
-              Meal category
-            </legend>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {MEAL_TYPES.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  aria-pressed={mealType === type}
-                  onClick={() => setMealType(type)}
-                  className={`flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
-                    mealType === type
-                      ? 'border-accent bg-accent text-accent-fg'
-                      : 'border-line bg-panel text-ink hover:bg-hover'
-                  }`}
-                >
-                  {MEAL_TITLES[type]}
-                </button>
-              ))}
+          {/* Common Details: Meal Type, Date, Time */}
+          <div className="space-y-3 rounded-xl border border-line bg-surface/60 p-3">
+            {/* Meal Type selection */}
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-ink">
+                Meal Category
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {MEAL_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setMealType(type)}
+                    className={`rounded-lg py-1.5 text-xs font-medium transition-all ${
+                      mealType === type
+                        ? 'bg-accent text-accent-fg font-semibold shadow-sm'
+                        : 'border border-line bg-surface text-muted hover:bg-hover hover:text-ink'
+                    }`}
+                  >
+                    {MEAL_TITLES[type]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </fieldset>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input
-              label="Date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.currentTarget.value)}
-              required
-            />
-            <Input
-              label="Time"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.currentTarget.value)}
-              required
-            />
+            {/* Date and Time */}
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="Date"
+                type="date"
+                value={date}
+                max={formatLocalDate(new Date())}
+                onChange={(e) => setDate(e.target.value)}
+              />
+              <Input
+                label="Time"
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+              />
+            </div>
           </div>
 
-          {/* AI Quick Log Tab Body */}
-          {activeTab === 'ai' && (
+          {/* TAB 1: DIRECT QUICK ENTRY */}
+          {activeTab === 'direct' && (
+            <div className="space-y-3">
+              <Input
+                label="Food or Meal Name"
+                placeholder="e.g. Oatmeal with protein powder & blueberries"
+                value={directName}
+                onChange={(e) => setDirectName(e.target.value)}
+                autoFocus
+              />
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Input
+                  label="Calories (kcal)"
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 450"
+                  value={directCalories}
+                  onChange={(e) => setDirectCalories(e.target.value)}
+                />
+                <Input
+                  label="Protein (g)"
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 35"
+                  value={directProtein}
+                  onChange={(e) => setDirectProtein(e.target.value)}
+                />
+                <Input
+                  label="Carbs (g)"
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 45"
+                  value={directCarbs}
+                  onChange={(e) => setDirectCarbs(e.target.value)}
+                />
+                <Input
+                  label="Fat (g)"
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 10"
+                  value={directFat}
+                  onChange={(e) => setDirectFat(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: SAVED MEALS LIBRARY */}
+          {activeTab === 'library' && (
             <div className="space-y-4">
-              {parsedMeal ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-ink">
-                      Review & adjust detected meals
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setParsedMeal(null)}
-                      className="text-xs text-accent hover:underline"
-                    >
-                      Edit prompt
-                    </button>
-                  </div>
-                  <ParsedMealPreview
-                    meal={parsedMeal}
-                    saving={savingAi}
-                    onCancel={() => setParsedMeal(null)}
-                    onConfirm={(confirmed) => void handleAiConfirm(confirmed)}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    label="Search Saved Meals"
+                    placeholder="Search by name…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    icon={Plus}
+                    onClick={() => setCreateModalOpen(true)}
+                  >
+                    New
+                  </Button>
+                </div>
+              </div>
+
+              {loadingMeals ? (
+                <p className="py-6 text-center text-sm text-muted">
+                  Loading saved meals…
+                </p>
+              ) : filteredMeals.length === 0 ? (
+                <div className="rounded-xl border border-line bg-surface p-6 text-center">
+                  <p className="text-sm font-semibold text-ink">No saved meals found</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Switch to Quick Entry tab or create a saved meal.
+                  </p>
+                  <Button
+                    size="small"
+                    className="mt-3"
+                    onClick={() => setActiveTab('direct')}
+                  >
+                    Use Quick Entry
+                  </Button>
+                </div>
               ) : (
-                <div className="space-y-2">
+                <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                  {filteredMeals.map((meal) => {
+                    const isSelected = selectedMeal?.id === meal.id
+                    return (
+                      <button
+                        key={meal.id}
+                        type="button"
+                        onClick={() => setSelectedMeal(meal)}
+                        className={`w-full rounded-xl border p-2.5 text-left transition-all ${
+                          isSelected
+                            ? 'border-accent bg-accent/10 ring-1 ring-accent'
+                            : 'border-line bg-surface hover:bg-hover'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-ink">{meal.name}</p>
+                          <span className="text-xs font-semibold text-accent">
+                            {meal.calories} kcal
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {meal.proteinG}g P · {meal.carbsG}g C · {meal.fatG}g F
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {selectedMeal && (
+                <div className="rounded-xl border border-line bg-surface p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <label
-                      htmlFor="ai-meal-prompt"
-                      className="block text-sm font-medium text-ink"
-                    >
-                      Describe what you ate
-                    </label>
-                    <button
-                      type="button"
-                      onClick={toggleListening}
-                      title={
-                        !isSupported
-                          ? 'Voice dictation is not supported in this browser. Please use Chrome, Edge, Safari, or device keyboard dictation.'
-                          : isListening
-                            ? 'Listening... Click to stop'
-                            : 'Dictate meal with microphone'
-                      }
-                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                        isListening
-                          ? 'bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/50'
-                          : 'bg-accent-soft text-accent hover:bg-accent/20'
-                      }`}
-                    >
-                      {isListening ? (
-                        <>
-                          <MicOff className="size-3.5" />
-                          Listening... Stop
-                        </>
-                      ) : (
-                        <>
-                          <Mic className="size-3.5" />
-                          Voice Dictation
-                        </>
-                      )}
-                    </button>
+                    <span className="text-xs font-semibold text-ink">Selected: {selectedMeal.name}</span>
+                    <span className="text-xs text-muted">Base: {selectedMeal.calories} kcal</span>
                   </div>
-                  <textarea
-                    id="ai-meal-prompt"
-                    rows={4}
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="e.g. 2 whole eggs scrambled, 2 slices of whole wheat toast with butter, and 1 large banana"
-                    className="w-full rounded-xl border border-line bg-panel p-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                        void handleAiParse()
-                      }
-                    }}
+                  <Input
+                    label="Portion (%)"
+                    type="number"
+                    min="1"
+                    step="5"
+                    value={portionPercent}
+                    onChange={(e) => setPortionPercent(e.target.value)}
                   />
-                  <div className="flex items-center justify-between text-xs text-muted">
-                    <span>Tip: Mention portions (e.g. grams, slices, cups).</span>
-                    <span>Ctrl + Enter to parse</span>
-                  </div>
+                  {scaledNutrition && (
+                    <p className="text-xs text-accent font-medium">
+                      Portion totals: {Math.round(scaledNutrition.calories)} kcal ·{' '}
+                      {Math.round(scaledNutrition.proteinG)}g P ·{' '}
+                      {Math.round(scaledNutrition.carbsG)}g C ·{' '}
+                      {Math.round(scaledNutrition.fatG)}g F
+                    </p>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Library / Custom Tab Body */}
-          {activeTab === 'library' && (
-            <>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-ink">
-                    Select saved meal
-                  </p>
-                  <Button
-                    size="small"
-                    variant="ghost"
-                    icon={Plus}
-                    onClick={() => setCreateModalOpen(true)}
-                  >
-                    Create new meal
-                  </Button>
+          {/* TAB 3: LOG WITH AI */}
+          {activeTab === 'ai' && (
+            <div className="space-y-4">
+              {!parsedMeal ? (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <textarea
+                      rows={3}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="e.g. 2 eggs, 2 slices toast with butter, and a glass of milk"
+                      className="w-full resize-none rounded-xl border border-line bg-surface p-3 text-sm text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-accent"
+                    />
+                    {isSupported && (
+                      <button
+                        type="button"
+                        onClick={toggleListening}
+                        className={`absolute bottom-2.5 right-2.5 flex size-8 items-center justify-center rounded-lg transition-colors ${
+                          isListening
+                            ? 'bg-red-500 text-white animate-pulse'
+                            : 'bg-surface border border-line text-muted hover:text-ink'
+                        }`}
+                      >
+                        {isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-                <Input
-                  label="Search saved meals"
-                  type="search"
-                  placeholder="Search by meal name…"
-                  value={query}
-                  onChange={(e) => setQuery(e.currentTarget.value)}
+              ) : (
+                <ParsedMealPreview
+                  meal={parsedMeal}
+                  onConfirm={handleAiConfirm}
+                  onCancel={() => setParsedMeal(null)}
+                  saving={savingAi}
                 />
-
-                {loadingMeals ? (
-                  <p className="py-4 text-center text-sm text-muted">
-                    Loading saved meals…
-                  </p>
-                ) : filteredMeals.length === 0 ? (
-                  <div className="rounded-xl border border-line bg-surface p-4 text-center">
-                    <Search aria-hidden="true" className="mx-auto size-5 text-muted" />
-                    <p className="mt-1 text-sm font-medium text-ink">No meals found</p>
-                    <p className="text-xs text-muted">
-                      Create a saved meal first to log it.
-                    </p>
-                    <Button
-                      size="small"
-                      variant="outline"
-                      icon={Plus}
-                      className="mt-3"
-                      onClick={() => setCreateModalOpen(true)}
-                    >
-                      Create saved meal
-                    </Button>
-                  </div>
-                ) : (
-                  <ul className="max-h-40 divide-y divide-line overflow-y-auto rounded-xl border border-line">
-                    {filteredMeals.map((meal) => {
-                      const isSelected = selectedMeal?.id === meal.id
-                      return (
-                        <li key={meal.id}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedMeal(meal)}
-                            className={`w-full px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
-                              isSelected
-                                ? 'bg-accent-soft font-semibold text-accent'
-                                : 'hover:bg-hover text-ink'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="min-w-0 break-words">{meal.name}</span>
-                              <span className="shrink-0 text-xs font-normal text-muted">
-                                {meal.calories} kcal
-                              </span>
-                            </div>
-                            <p className="text-xs font-normal text-muted">
-                              {meal.servingDescription} · {meal.proteinG}P · {meal.carbsG}C ·{' '}
-                              {meal.fatG}F
-                            </p>
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
-
-              {selectedMeal && (
-                <div className="rounded-xl border border-accent/20 bg-accent-soft p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm text-ink">{selectedMeal.name}</p>
-                    <Badge variant="info">{selectedMeal.servingDescription}</Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted">
-                    Base per serving: {selectedMeal.calories} kcal · {selectedMeal.proteinG}g P ·{' '}
-                    {selectedMeal.carbsG}g C · {selectedMeal.fatG}g F
-                  </p>
-                </div>
               )}
-
-              <Input
-                label="Portion size (%)"
-                type="number"
-                min="1"
-                step="5"
-                value={portionPercent}
-                onChange={(e) => setPortionPercent(e.currentTarget.value)}
-                helperText="100% = 1 full serving"
-                required
-              />
-
-              {scaledNutrition && (
-                <div className="rounded-xl border border-line bg-surface p-3 text-xs">
-                  <p className="font-semibold uppercase tracking-wider text-muted">
-                    Scaled Nutrition Snapshot
-                  </p>
-                  <div className="mt-1.5 grid grid-cols-4 gap-2 text-center">
-                    <div className="rounded bg-panel p-1.5">
-                      <p className="font-bold text-ink">{Math.round(scaledNutrition.calories)}</p>
-                      <p className="text-[10px] text-muted">Calories</p>
-                    </div>
-                    <div className="rounded bg-panel p-1.5">
-                      <p className="font-bold text-ink">
-                        {Math.round(scaledNutrition.proteinG * 10) / 10}g
-                      </p>
-                      <p className="text-[10px] text-muted">Protein</p>
-                    </div>
-                    <div className="rounded bg-panel p-1.5">
-                      <p className="font-bold text-ink">
-                        {Math.round(scaledNutrition.carbsG * 10) / 10}g
-                      </p>
-                      <p className="text-[10px] text-muted">Carbs</p>
-                    </div>
-                    <div className="rounded bg-panel p-1.5">
-                      <p className="font-bold text-ink">
-                        {Math.round(scaledNutrition.fatG * 10) / 10}g
-                      </p>
-                      <p className="text-[10px] text-muted">Fat</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       </Modal>
 
-      <SavedMealModal
-        open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSave={handleCreatedMeal}
-      />
+      {createModalOpen && (
+        <SavedMealModal
+          open
+          onClose={() => setCreateModalOpen(false)}
+          onSave={handleCreatedSavedMeal}
+        />
+      )}
     </>
   )
 }
 
-function LogMealModal(props: LogMealModalProps) {
+export function LogMealModal(props: LogMealModalProps) {
   if (!props.open) return null
-  return (
-    <LogMealDialog
-      key={`${props.initialTab ?? 'library'}-${props.initialMealType ?? 'breakfast'}-${props.initialDate ?? ''}-${props.initialMeal?.id ?? ''}`}
-      {...props}
-    />
-  )
+  return <LogMealDialog {...props} />
 }
 
 export default LogMealModal

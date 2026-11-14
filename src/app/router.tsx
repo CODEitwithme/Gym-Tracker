@@ -17,6 +17,9 @@ const workoutPage = lazy(() => import('../features/workouts/WorkoutPage'))
 const dataManagementPage = lazy(
   () => import('../features/data-management/DataManagementPage'),
 )
+const preferencesPage = lazy(
+  () => import('../features/settings/PreferencesPage'),
+)
 const integrationsPage = lazy(
   () => import('../features/integrations/IntegrationsPage'),
 )
@@ -39,7 +42,8 @@ export const router = createBrowserRouter([
       { path: 'nutrition', element: createElement(nutritionPage) },
       { path: 'nutrition/meals', element: createElement(savedMealsPage) },
       { path: 'ai-logger', element: createElement(aiLoggerPage) },
-      { path: 'settings', element: <Navigate to="/settings/integrations" replace /> },
+      { path: 'settings', element: <Navigate to="/settings/preferences" replace /> },
+      { path: 'settings/preferences', element: createElement(preferencesPage) },
       { path: 'settings/integrations', element: createElement(integrationsPage) },
       { path: 'settings/ai', element: createElement(aiSettingsPage) },
       { path: 'settings/data', element: createElement(dataManagementPage) },

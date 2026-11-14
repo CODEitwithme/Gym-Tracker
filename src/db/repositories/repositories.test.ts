@@ -189,7 +189,9 @@ describe('repositories', () => {
     expect(await listExerciseSets(workoutExercise.id, testDatabase)).toHaveLength(1)
 
     await softDeleteExercise(exercise.id, testDatabase)
-    expect(await listActiveExercises(testDatabase)).toHaveLength(0)
+    const activeExercises = await listActiveExercises(testDatabase)
+    expect(activeExercises).toHaveLength(25)
+    expect(activeExercises.some(({ id }) => id === exercise.id)).toBe(false)
     const deletedWorkout = await softDeleteWorkoutSession(workout.id, testDatabase)
     expect(deletedWorkout.deletedAt).not.toBeNull()
     expect(await listWorkoutSessions(testDatabase)).toHaveLength(0)
@@ -785,8 +787,43 @@ describe('repositories', () => {
         'aiWorkoutLogs',
       ]),
     )
+    expect(await dbV2.table('exercises').count()).toBe(25)
     dbV2.close()
     await dbV2.delete()
+  })
+
+  it('seeds default exercises during upgrade without duplicating existing exercises', async () => {
+    const databaseName = `gym-tracker-v3-to-v4-${createUUID()}`
+    const dbV3 = new Dexie(databaseName)
+    applyMigrations(dbV3, migrations.slice(0, 3))
+    await dbV3.open()
+    await dbV3.table('exercises').add({
+      id: 'existing-bench-press',
+      name: 'barbell bench press',
+      category: 'chest',
+      equipment: 'Custom Barbell',
+      createdAt: '2026-11-14T00:00:00.000Z',
+      updatedAt: '2026-11-14T00:00:00.000Z',
+      deletedAt: null,
+    })
+    dbV3.close()
+
+    const upgraded = new GymTrackerDatabase(databaseName)
+    await upgraded.open()
+    const exercises = await listActiveExercises(upgraded)
+    expect(exercises).toHaveLength(25)
+    expect(
+      exercises.filter(
+        (exercise) => exercise.name.toLowerCase() === 'barbell bench press',
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        id: 'existing-bench-press',
+        equipment: 'Custom Barbell',
+      }),
+    ])
+    upgraded.close()
+    await upgraded.delete()
   })
 
   it('manages weight logs with creation, update, range queries, and soft delete', async () => {

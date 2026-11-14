@@ -10,7 +10,7 @@ import {
   addExerciseToWorkout,
   createCustomExercise,
   createSet,
-  findExercises,
+  findBestExerciseMatch,
   finishWorkout,
   saveWorkoutNotes,
 } from '../workouts/workoutService'
@@ -265,10 +265,7 @@ export async function saveAiWorkout(
         }
 
         for (const item of exerciseItems) {
-          const exercises = await findExercises(item.exercise)
-          let exercise = exercises.find(
-            (e) => e.name.toLowerCase() === item.exercise.toLowerCase().trim(),
-          )
+          let exercise = await findBestExerciseMatch(item.exercise)
           if (!exercise) {
             exercise = await createCustomExercise({
               name: item.exercise.trim(),

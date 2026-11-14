@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import {
+  cloneWorkoutThunk,
   deleteWorkoutThunk,
   finishWorkoutThunk,
   loadActiveWorkoutThunk,
@@ -65,6 +66,19 @@ const workoutUiSlice = createSlice({
         state.status = 'failed'
         state.error =
           action.payload ?? action.error.message ?? 'Could not start workout.'
+      })
+      .addCase(cloneWorkoutThunk.pending, (state) => {
+        state.status = 'saving'
+        state.error = null
+      })
+      .addCase(cloneWorkoutThunk.fulfilled, (state, action) => {
+        state.activeWorkoutId = action.payload
+        state.status = 'idle'
+      })
+      .addCase(cloneWorkoutThunk.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error =
+          action.payload ?? action.error.message ?? 'Could not repeat workout.'
       })
       .addCase(finishWorkoutThunk.pending, (state) => {
         state.status = 'saving'

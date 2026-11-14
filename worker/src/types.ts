@@ -15,6 +15,12 @@ export interface StoredCredential {
   deviceToken?: string
 }
 
+export interface ParsedExerciseSet {
+  setNumber: number
+  weight: number | null
+  reps: number | null
+}
+
 export interface ParsedExerciseItem {
   exercise: string
   weight: number | null
@@ -23,6 +29,7 @@ export interface ParsedExerciseItem {
   sets: number | null
   durationSeconds: number | null
   notes: string | null
+  setDetails?: ParsedExerciseSet[] | null
 }
 
 export interface ParsedWorkout {

@@ -464,6 +464,43 @@ describe('aiLoggerService', () => {
     expect(sets.length).toBe(6)
   })
 
+  it('saves an exercise with different weights for different sets', async () => {
+    const workoutData: ConfirmedWorkout = {
+      exercises: [
+        {
+          exercise: 'Barbell Bench Press',
+          weight: 60,
+          unit: 'kg',
+          reps: 12,
+          sets: 3,
+          durationSeconds: null,
+          notes: 'Pyramid sets',
+          setDetails: [
+            { setNumber: 1, weight: 60, reps: 12 },
+            { setNumber: 2, weight: 70, reps: 10 },
+            { setNumber: 3, weight: 80, reps: 8 },
+          ],
+        },
+      ],
+      sessionName: 'Pyramid Bench Session',
+    }
+
+    const session = await saveAiWorkout(workoutData)
+    expect(session).toBeDefined()
+
+    const sets = (await db.exerciseSets.toArray()).sort((a, b) => a.setNumber - b.setNumber)
+    expect(sets.length).toBe(3)
+    expect(sets[0].setNumber).toBe(1)
+    expect(sets[0].weightKg).toBe(60)
+    expect(sets[0].reps).toBe(12)
+    expect(sets[1].setNumber).toBe(2)
+    expect(sets[1].weightKg).toBe(70)
+    expect(sets[1].reps).toBe(10)
+    expect(sets[2].setNumber).toBe(3)
+    expect(sets[2].weightKg).toBe(80)
+    expect(sets[2].reps).toBe(8)
+  })
+
   // Test 14: saveAiMeal handles multiple food items under different meal types
   it('14. saveAiMeal handles multiple food items under different meal types', async () => {
     const confirmed: ConfirmedMeal = {

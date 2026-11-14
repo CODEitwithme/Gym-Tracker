@@ -1,4 +1,11 @@
-import type { MealType, ParsedExerciseItem, ParsedMeal, ParsedMealItem, ParsedWorkout } from './types'
+import type {
+  MealType,
+  ParsedExerciseItem,
+  ParsedExerciseSet,
+  ParsedMeal,
+  ParsedMealItem,
+  ParsedWorkout,
+} from './types'
 
 export const GEMINI_SYSTEM_PROMPT = `You are a workout data extraction assistant. Extract ALL exercises performed, along with any mentioned workout title (e.g. "Chest Day", "Legs", "Push"), workout date (e.g. "today", "yesterday"), and start/end times or duration (e.g. "5:30 to 6:45 PM", "1 hour") from the user's natural language message.
 A message may contain ONE or MULTIPLE exercises (e.g. "Trained today 6 to 7:15 pm. Bench press 80kg 3x8, Incline DB press 24kg 3x10").
@@ -18,7 +25,8 @@ Return ONLY valid JSON matching this schema (no markdown, no explanation):
       "reps": positive integer or null,
       "sets": positive integer or null,
       "durationSeconds": positive integer or null,
-      "notes": string or null
+      "notes": string or null,
+      "setDetails": array of {"setNumber": 1, "weight": number or null, "reps": positive integer or null} if user mentions varying weights or reps per set (e.g. "60kg x 12, 70kg x 10, 80kg x 8"), otherwise null
     }
   ],
   "confidence": "high" if you could extract all key details, "low" if guessing,
@@ -136,6 +144,17 @@ function validateExerciseItem(r: unknown): ParsedExerciseItem {
     notes = item.notes
   }
 
+  let setDetails: ParsedExerciseSet[] | null = null
+  if (Array.isArray(item.setDetails)) {
+    setDetails = item.setDetails
+      .filter((s): s is Record<string, unknown> => typeof s === 'object' && s !== null)
+      .map((s, idx) => ({
+        setNumber: typeof s.setNumber === 'number' && Number.isInteger(s.setNumber) ? s.setNumber : idx + 1,
+        weight: typeof s.weight === 'number' && !isNaN(s.weight) && s.weight >= 0 ? s.weight : null,
+        reps: typeof s.reps === 'number' && Number.isInteger(s.reps) && s.reps > 0 ? s.reps : null,
+      }))
+  }
+
   return {
     exercise: item.exercise.trim(),
     weight,
@@ -144,6 +163,7 @@ function validateExerciseItem(r: unknown): ParsedExerciseItem {
     sets,
     durationSeconds,
     notes,
+    ...(setDetails ? { setDetails } : {}),
   }
 }
 

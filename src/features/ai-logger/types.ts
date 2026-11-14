@@ -7,6 +7,12 @@ export type AiProvider = 'gemini'
 
 export type AiLoggerMode = 'workout' | 'nutrition'
 
+export interface ParsedExerciseSet {
+  setNumber: number
+  weight: number | null
+  reps: number | null
+}
+
 export interface ParsedExerciseItem {
   exercise: string
   weight: number | null
@@ -15,6 +21,7 @@ export interface ParsedExerciseItem {
   sets: number | null
   durationSeconds: number | null
   notes: string | null
+  setDetails?: ParsedExerciseSet[] | null
 }
 
 export interface ParsedWorkout {
@@ -69,6 +76,12 @@ export interface AiConversationTurn {
   timestamp: string
 }
 
+export interface ExerciseSetDetail {
+  setNumber: number
+  weight: number | null
+  reps: number
+}
+
 export interface ConfirmedExerciseItem {
   exercise: string
   weight: number | null
@@ -77,6 +90,7 @@ export interface ConfirmedExerciseItem {
   sets: number
   durationSeconds: number | null
   notes: string
+  setDetails?: ExerciseSetDetail[]
 }
 
 export interface ConfirmedWorkout {

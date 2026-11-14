@@ -276,23 +276,44 @@ export async function saveAiWorkout(
 
           const workoutExercise = await addExerciseToWorkout(session.id, exercise.id)
 
-          const rawWeight = item.weight ?? 0
-          const weightKg =
+          const rawDefaultWeight = item.weight ?? 0
+          const defaultWeightKg =
             item.unit === 'lbs'
-              ? Math.round(rawWeight * 0.453592 * 100) / 100
-              : Math.round(rawWeight * 100) / 100
+              ? Math.round(rawDefaultWeight * 0.453592 * 100) / 100
+              : Math.round(rawDefaultWeight * 100) / 100
 
-          const setsCount = item.sets && item.sets > 0 ? item.sets : 1
-          const repsCount = item.reps && item.reps > 0 ? item.reps : 1
+          const defaultReps = item.reps && item.reps > 0 ? item.reps : 1
 
-          for (let setNumber = 1; setNumber <= setsCount; setNumber++) {
-            await createSet({
-              workoutExerciseId: workoutExercise.id,
-              setNumber,
-              weightKg,
-              reps: repsCount,
-              completed: true,
-            })
+          if (item.setDetails && item.setDetails.length > 0) {
+            for (let idx = 0; idx < item.setDetails.length; idx++) {
+              const s = item.setDetails[idx]
+              const rawSetWeight =
+                s.weight !== null && s.weight !== undefined ? s.weight : rawDefaultWeight
+              const setWeightKg =
+                item.unit === 'lbs'
+                  ? Math.round(rawSetWeight * 0.453592 * 100) / 100
+                  : Math.round(rawSetWeight * 100) / 100
+              const setReps = s.reps && s.reps > 0 ? s.reps : defaultReps
+
+              await createSet({
+                workoutExerciseId: workoutExercise.id,
+                setNumber: idx + 1,
+                weightKg: setWeightKg,
+                reps: setReps,
+                completed: true,
+              })
+            }
+          } else {
+            const setsCount = item.sets && item.sets > 0 ? item.sets : 1
+            for (let setNumber = 1; setNumber <= setsCount; setNumber++) {
+              await createSet({
+                workoutExerciseId: workoutExercise.id,
+                setNumber,
+                weightKg: defaultWeightKg,
+                reps: defaultReps,
+                completed: true,
+              })
+            }
           }
         }
 

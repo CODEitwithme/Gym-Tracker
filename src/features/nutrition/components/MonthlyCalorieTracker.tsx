@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Calendar,
@@ -31,8 +31,10 @@ export function MonthlyCalorieTracker({
   onOpenCalculator,
   fallbackTargetCalories,
 }: MonthlyCalorieTrackerProps) {
-  const currentInitialMonth = formatLocalDate(new Date()).slice(0, 7)
-  const [selectedMonthKey, setSelectedMonthKey] = useState(currentInitialMonth)
+  const [selectedMonthKey, setSelectedMonthKey] = useState(() =>
+    formatLocalDate(new Date()).slice(0, 7),
+  )
+  const todayDate = useMemo(() => formatLocalDate(new Date()), [])
   const [summary, setSummary] = useState<MonthlyAdherenceSummary | null>(null)
   const [manualBodyFat, setManualBodyFat] = useState(() => {
     try {
@@ -46,18 +48,18 @@ export function MonthlyCalorieTracker({
   const manualBodyFatChangePercent = manualBodyFat.value
   const bodyFatError = manualBodyFat.error
 
-  const loadData = async (monthKey: string) => {
+  const loadData = useCallback(async (monthKey: string) => {
     try {
       const data = await loadMonthlyAdherenceSummary(monthKey, fallbackTargetCalories)
       setSummary(data)
     } catch {
       // Done
     }
-  }
+  }, [fallbackTargetCalories])
 
   useEffect(() => {
     void loadData(selectedMonthKey)
-  }, [selectedMonthKey, fallbackTargetCalories])
+  }, [selectedMonthKey, loadData])
 
   const handlePrevMonth = () => {
     const [y, m] = selectedMonthKey.split('-').map(Number)
@@ -303,7 +305,7 @@ export function MonthlyCalorieTracker({
           ))}
 
           {summary?.days.map((day) => {
-            const isToday = day.date === formatLocalDate(new Date())
+            const isToday = day.date === todayDate
 
             return (
               <div

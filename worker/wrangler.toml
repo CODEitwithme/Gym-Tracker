@@ -12,4 +12,4 @@ id = "fda2fd50c33545938786dae80a14f5fb"
 preview_id = "e6e6ff00fde54ceb80d024149ad9ff53"
 
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://gym-tracker-six-teal.vercel.app,*.vercel.app"

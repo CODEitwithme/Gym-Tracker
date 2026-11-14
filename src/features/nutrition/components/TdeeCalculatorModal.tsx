@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   Calculator,
@@ -92,7 +92,7 @@ export function TdeeCalculatorModal({
     goalType,
   })
 
-  const currentMonthKey = formatLocalDate(new Date()).slice(0, 7)
+  const currentMonthKey = useMemo(() => formatLocalDate(new Date()).slice(0, 7), [])
 
   const handleApplyToDailyGoals = () => {
     const success = saveNutritionGoals({

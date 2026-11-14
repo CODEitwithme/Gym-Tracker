@@ -58,6 +58,7 @@ function LogMealDialog({
   const [activeTab, setActiveTab] = useState<MealLogModalTab>(initialTab)
   const [mealType, setMealType] = useState<MealType>(initialMealType)
   const [date, setDate] = useState(() => initialDate ?? formatLocalDate(new Date()))
+  const todayStr = useMemo(() => formatLocalDate(new Date()), [])
   const [time, setTime] = useState(() => {
     const now = new Date()
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
@@ -487,7 +488,7 @@ function LogMealDialog({
                 label="Date"
                 type="date"
                 value={date}
-                max={formatLocalDate(new Date())}
+                max={todayStr}
                 onChange={(e) => setDate(e.target.value)}
               />
               <Input

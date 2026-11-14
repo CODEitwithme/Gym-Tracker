@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Footprints,
@@ -30,6 +30,7 @@ export function LogStepsModal({
   initialTarget = 10000,
   initialDate,
 }: LogStepsModalProps) {
+  const todayStr = useMemo(() => formatLocalDate(new Date()), [])
   const [date, setDate] = useState(() => initialDate ?? formatLocalDate(new Date()))
   const [stepCount, setStepCount] = useState(() => (initialCount ? String(initialCount) : ''))
   const [targetSteps, setTargetSteps] = useState(() => String(initialTarget || 10000))
@@ -158,7 +159,7 @@ export function LogStepsModal({
           label="Date"
           type="date"
           value={date}
-          max={formatLocalDate(new Date())}
+          max={todayStr}
           onChange={(e) => setDate(e.target.value)}
           required
         />

@@ -1,6 +1,7 @@
 import { createElement, lazy } from 'react'
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout'
+import ErrorBoundary from '../components/common/ErrorBoundary'
 
 const dashboardPage = lazy(() => import('../features/dashboard/DashboardPage'))
 const progressPage = lazy(() => import('../features/progress/ProgressDashboardPage'))
@@ -30,6 +31,7 @@ const aiLoggerPage = lazy(
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
+    errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: createElement(dashboardPage) },
       { path: 'progress', element: createElement(progressPage) },

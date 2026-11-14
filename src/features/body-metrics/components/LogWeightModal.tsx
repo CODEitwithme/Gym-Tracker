@@ -22,7 +22,7 @@ export function LogWeightModal({
   initialWeightKg,
   initialDate,
 }: LogWeightModalProps) {
-  const [date, setDate] = useState(initialDate ?? formatLocalDate(new Date()))
+  const [date, setDate] = useState(() => initialDate ?? formatLocalDate(new Date()))
   const [unit, setUnit] = useState<'kg' | 'lb'>('kg')
   const [weight, setWeight] = useState(initialWeightKg ? String(initialWeightKg) : '')
   const [notes, setNotes] = useState('')

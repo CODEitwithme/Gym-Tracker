@@ -6,8 +6,7 @@ import type {
   WorkoutSession,
 } from '../workouts/types'
 import type { AiWorkoutLog } from '../ai-logger/types'
-import type { UUID } from '../../types/records'
-import type { NutritionValues } from '../../types/records'
+import type { MonthlyCalorieTarget, NutritionValues, StepLog, UUID, WeightLog } from '../../types/records'
 import { DATABASE_VERSION } from '../../db/database'
 
 export const BACKUP_FORMAT = 'gym-tracker-backup'
@@ -23,6 +22,9 @@ export const BACKUP_TABLES = [
   'savedMeals',
   'mealLogs',
   'aiWorkoutLogs',
+  'weightLogs',
+  'stepLogs',
+  'monthlyCalorieTargets',
 ] as const
 
 export interface BackupData {
@@ -33,6 +35,9 @@ export interface BackupData {
   savedMeals: SavedMeal[]
   mealLogs: MealLog[]
   aiWorkoutLogs?: AiWorkoutLog[]
+  weightLogs?: WeightLog[]
+  stepLogs?: StepLog[]
+  monthlyCalorieTargets?: MonthlyCalorieTarget[]
 }
 
 export interface GymTrackerBackup {
@@ -301,6 +306,69 @@ function isAiWorkoutLog(value: unknown): value is AiWorkoutLog {
   )
 }
 
+function isWeightLog(value: unknown): value is WeightLog {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, [
+      ...metadataKeys,
+      'localDate',
+      'weightKg',
+      'unit',
+      'notes',
+    ]) &&
+    isMetadata(value) &&
+    isLocalDate(value.localDate) &&
+    isFiniteNumber(value.weightKg) &&
+    value.weightKg > 0 &&
+    (value.unit === 'kg' || value.unit === 'lb') &&
+    (value.notes === undefined || typeof value.notes === 'string')
+  )
+}
+
+function isStepLog(value: unknown): value is StepLog {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, [
+      ...metadataKeys,
+      'localDate',
+      'stepCount',
+      'targetSteps',
+    ]) &&
+    isMetadata(value) &&
+    isLocalDate(value.localDate) &&
+    Number.isInteger(value.stepCount) &&
+    Number(value.stepCount) >= 0 &&
+    Number.isInteger(value.targetSteps) &&
+    Number(value.targetSteps) > 0
+  )
+}
+
+function isMonthlyCalorieTarget(value: unknown): value is MonthlyCalorieTarget {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, [
+      ...metadataKeys,
+      'monthKey',
+      'targetCalories',
+      'targetProteinG',
+      'targetCarbsG',
+      'targetFatG',
+      'phase',
+      'tdeeEstimate',
+    ]) &&
+    isMetadata(value) &&
+    typeof value.monthKey === 'string' &&
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(value.monthKey) &&
+    isFiniteNumber(value.targetCalories) &&
+    value.targetCalories > 0 &&
+    (value.targetProteinG === undefined || isFiniteNumber(value.targetProteinG)) &&
+    (value.targetCarbsG === undefined || isFiniteNumber(value.targetCarbsG)) &&
+    (value.targetFatG === undefined || isFiniteNumber(value.targetFatG)) &&
+    (value.phase === undefined || ['cut', 'maintain', 'bulk'].includes(String(value.phase))) &&
+    (value.tdeeEstimate === undefined || isFiniteNumber(value.tdeeEstimate))
+  )
+}
+
 function requireTable<T>(
   data: UnknownRecord,
   table: keyof BackupData,
@@ -482,6 +550,18 @@ export function validateBackup(value: unknown): GymTrackerBackup {
       rawData.aiWorkoutLogs !== undefined
         ? requireTable(rawData, 'aiWorkoutLogs', isAiWorkoutLog)
         : [],
+    weightLogs:
+      rawData.weightLogs !== undefined
+        ? requireTable(rawData, 'weightLogs', isWeightLog)
+        : [],
+    stepLogs:
+      rawData.stepLogs !== undefined
+        ? requireTable(rawData, 'stepLogs', isStepLog)
+        : [],
+    monthlyCalorieTargets:
+      rawData.monthlyCalorieTargets !== undefined
+        ? requireTable(rawData, 'monthlyCalorieTargets', isMonthlyCalorieTarget)
+        : [],
   }
   assertUniqueIds('workoutSessions', data.workoutSessions)
   assertUniqueIds('exercises', data.exercises)
@@ -491,6 +571,15 @@ export function validateBackup(value: unknown): GymTrackerBackup {
   assertUniqueIds('mealLogs', data.mealLogs)
   if (data.aiWorkoutLogs && data.aiWorkoutLogs.length > 0) {
     assertUniqueIds('aiWorkoutLogs', data.aiWorkoutLogs)
+  }
+  if (data.weightLogs && data.weightLogs.length > 0) {
+    assertUniqueIds('weightLogs', data.weightLogs)
+  }
+  if (data.stepLogs && data.stepLogs.length > 0) {
+    assertUniqueIds('stepLogs', data.stepLogs)
+  }
+  if (data.monthlyCalorieTargets && data.monthlyCalorieTargets.length > 0) {
+    assertUniqueIds('monthlyCalorieTargets', data.monthlyCalorieTargets)
   }
   assertRelationships(data)
 

@@ -11,6 +11,9 @@ export class GymTrackerDatabase extends Dexie implements GymTrackerTables {
   savedMeals!: GymTrackerTables['savedMeals']
   mealLogs!: GymTrackerTables['mealLogs']
   aiWorkoutLogs!: GymTrackerTables['aiWorkoutLogs']
+  weightLogs!: GymTrackerTables['weightLogs']
+  stepLogs!: GymTrackerTables['stepLogs']
+  monthlyCalorieTargets!: GymTrackerTables['monthlyCalorieTargets']
 
   constructor(name = 'gym-tracker') {
     super(name)

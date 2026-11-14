@@ -1,5 +1,7 @@
 export * from './aiWorkoutLogs'
+export * from './bodyMetrics'
 export * from './exercises'
+export * from './monthlyTargets'
 export * from './nutrition'
 export * from './workoutDetails'
 export * from './workoutSessions'

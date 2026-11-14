@@ -6,9 +6,11 @@ import {
   Check,
   ChevronRight,
   Dumbbell,
+  Footprints,
   Play,
   Plus,
   RefreshCw,
+  Scale,
   Sparkles,
 } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
@@ -21,6 +23,14 @@ import type { DailyNutritionGoals } from '../nutrition/types'
 import { loadDashboardThunk } from './dashboardSlice'
 import type { DashboardAnalytics, DashboardDay } from './analyticsService'
 import { startWorkoutThunk, loadActiveWorkoutThunk } from '../workouts/workoutThunks'
+import {
+  loadTodayBodyMetrics,
+  type TodayBodyMetrics,
+} from '../body-metrics/bodyMetricsService'
+import { incrementSteps } from '../../db/repositories/bodyMetrics'
+import { LogWeightModal } from '../body-metrics/components/LogWeightModal'
+import { LogStepsModal } from '../body-metrics/components/LogStepsModal'
+import { formatLocalDate } from '../../lib/dateTime'
 
 function localDateFromString(value: string): Date {
   const [year, month, day] = value.split('-').map(Number)
@@ -58,6 +68,9 @@ export default function DashboardPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const [quickLogOpen, setQuickLogOpen] = useState(false)
+  const [logWeightOpen, setLogWeightOpen] = useState(false)
+  const [logStepsOpen, setLogStepsOpen] = useState(false)
+  const [bodyMetrics, setBodyMetrics] = useState<TodayBodyMetrics | null>(null)
 
   const {
     activeWorkoutId,
@@ -76,8 +89,18 @@ export default function DashboardPage() {
     getSavedNutritionGoals,
   )
 
+  const fetchBodyMetrics = async () => {
+    try {
+      const data = await loadTodayBodyMetrics()
+      setBodyMetrics(data)
+    } catch {
+      // Ignore
+    }
+  }
+
   useEffect(() => {
     void dispatch(loadDashboardThunk(period))
+    void fetchBodyMetrics()
   }, [dispatch, period])
 
   useEffect(() => {
@@ -99,6 +122,17 @@ export default function DashboardPage() {
 
   const handleRefresh = () => {
     void dispatch(loadDashboardThunk(period))
+    void fetchBodyMetrics()
+  }
+
+  const handleQuickAddSteps = async (amount: number) => {
+    try {
+      const todayStr = formatLocalDate(new Date())
+      await incrementSteps(todayStr, amount)
+      await fetchBodyMetrics()
+    } catch {
+      // Ignore
+    }
   }
 
   return (
@@ -137,10 +171,35 @@ export default function DashboardPage() {
           activeWorkoutId={activeWorkoutId}
           workoutStatus={workoutStatus}
           workoutError={workoutError}
+          bodyMetrics={bodyMetrics}
           onStartWorkout={handleStartWorkout}
           onOpenQuickLog={() => setQuickLogOpen(true)}
+          onOpenLogWeight={() => setLogWeightOpen(true)}
+          onOpenLogSteps={() => setLogStepsOpen(true)}
+          onQuickAddSteps={handleQuickAddSteps}
         />
       ) : null}
+
+      {/* Log Weight Modal */}
+      <LogWeightModal
+        open={logWeightOpen}
+        onClose={() => setLogWeightOpen(false)}
+        initialWeightKg={bodyMetrics?.latestWeight?.weightKg}
+        onSaved={() => {
+          void fetchBodyMetrics()
+        }}
+      />
+
+      {/* Log Steps Modal */}
+      <LogStepsModal
+        open={logStepsOpen}
+        onClose={() => setLogStepsOpen(false)}
+        initialCount={bodyMetrics?.todaySteps?.stepCount}
+        initialTarget={bodyMetrics?.todaySteps?.targetSteps ?? 10000}
+        onSaved={() => {
+          void fetchBodyMetrics()
+        }}
+      />
 
       {/* Floating Action Button (FAB) for AI Quick-Log */}
       <button
@@ -182,16 +241,24 @@ function DashboardView({
   activeWorkoutId,
   workoutStatus,
   workoutError,
+  bodyMetrics,
   onStartWorkout,
   onOpenQuickLog,
+  onOpenLogWeight,
+  onOpenLogSteps,
+  onQuickAddSteps,
 }: {
   analytics: DashboardAnalytics
   nutritionGoals: DailyNutritionGoals | null
   activeWorkoutId: string | null
   workoutStatus: 'idle' | 'loading' | 'saving' | 'failed'
   workoutError: string | null
+  bodyMetrics: TodayBodyMetrics | null
   onStartWorkout: () => Promise<void>
   onOpenQuickLog: () => void
+  onOpenLogWeight: () => void
+  onOpenLogSteps: () => void
+  onQuickAddSteps: (amount: number) => Promise<void>
 }) {
   const greeting = getGreeting()
   const todayDateStr = analytics.period.endDate
@@ -302,7 +369,7 @@ function DashboardView({
           Today's Glance
         </h2>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:gap-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
           {/* Card A: Today's Workout */}
           <Card className="flex flex-col justify-between">
             <div>
@@ -390,7 +457,7 @@ function DashboardView({
                   to="/nutrition"
                   className="text-xs font-medium text-accent hover:underline"
                 >
-                  Nutrition details
+                  Details
                 </Link>
               </div>
 
@@ -457,16 +524,200 @@ function DashboardView({
                   className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
                 >
                   <Plus size={13} aria-hidden="true" />
-                  <span>Log a meal</span>
+                  <span>Log meal</span>
                 </Link>
                 {!nutritionGoals && (
                   <Link
                     to="/nutrition"
                     className="text-xs text-muted hover:text-ink"
                   >
-                    Set daily targets
+                    Targets
                   </Link>
                 )}
+              </div>
+            </div>
+          </Card>
+
+          {/* Card C: Today's Steps */}
+          <Card className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-surface text-accent">
+                  <Footprints size={18} aria-hidden="true" />
+                </span>
+                {bodyMetrics?.todaySteps ? (
+                  bodyMetrics.todaySteps.stepCount >= bodyMetrics.todaySteps.targetSteps ? (
+                    <Badge variant="success">Goal Met</Badge>
+                  ) : (
+                    <Badge variant="default">
+                      {Math.round(
+                        (bodyMetrics.todaySteps.stepCount /
+                          bodyMetrics.todaySteps.targetSteps) *
+                          100,
+                      )}
+                      %
+                    </Badge>
+                  )
+                ) : (
+                  <Badge variant="default">0%</Badge>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <p className="text-xs font-medium text-muted">Daily Steps</p>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <h3 className="text-xl font-bold text-ink sm:text-2xl">
+                    {(bodyMetrics?.todaySteps?.stepCount ?? 0).toLocaleString()}
+                  </h3>
+                  <span className="text-xs text-muted">
+                    / {(bodyMetrics?.todaySteps?.targetSteps ?? 10000).toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-300"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(
+                          ((bodyMetrics?.todaySteps?.stepCount ?? 0) /
+                            (bodyMetrics?.todaySteps?.targetSteps ?? 10000)) *
+                            100,
+                        ),
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                {/* Quick Add Buttons */}
+                <div className="mt-3 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void onQuickAddSteps(500)}
+                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover transition-colors"
+                  >
+                    +500
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onQuickAddSteps(1000)}
+                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover transition-colors"
+                  >
+                    +1k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onQuickAddSteps(2500)}
+                    className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:bg-hover transition-colors"
+                  >
+                    +2.5k
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-line pt-3">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={onOpenLogSteps}
+                  className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                >
+                  <Plus size={13} aria-hidden="true" />
+                  <span>Log steps</span>
+                </button>
+                <Link
+                  to="/progress?tab=body"
+                  className="text-xs text-muted hover:text-ink"
+                >
+                  Analytics
+                </Link>
+              </div>
+            </div>
+          </Card>
+
+          {/* Card D: Today's Body Weight */}
+          <Card className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-surface text-accent">
+                  <Scale size={18} aria-hidden="true" />
+                </span>
+                {bodyMetrics?.todayWeight ? (
+                  <Badge variant="success">Weighed In</Badge>
+                ) : (
+                  <Badge variant="default">Pending</Badge>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <p className="text-xs font-medium text-muted">Body Weight</p>
+                {bodyMetrics?.todayWeight ? (
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <h3 className="text-xl font-bold text-ink sm:text-2xl">
+                      {bodyMetrics.todayWeight.weightKg}
+                    </h3>
+                    <span className="text-xs text-muted">kg today</span>
+                  </div>
+                ) : bodyMetrics?.latestWeight ? (
+                  <div className="mt-1">
+                    <div className="flex items-baseline gap-2">
+                      <h3 className="text-xl font-bold text-ink sm:text-2xl">
+                        {bodyMetrics.latestWeight.weightKg}
+                      </h3>
+                      <span className="text-xs text-muted">kg (latest)</span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      {bodyMetrics.latestWeight.localDate}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-1">
+                    <h3 className="text-lg font-semibold text-ink">No weigh-in</h3>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Log daily to track fat &amp; muscle trends.
+                    </p>
+                  </div>
+                )}
+
+                {bodyMetrics?.weeklyWeightDeltaKg !== null && bodyMetrics?.weeklyWeightDeltaKg !== undefined && (
+                  <div className="mt-3 flex items-center gap-1.5 text-xs">
+                    <span className="text-muted">7-Day Change:</span>
+                    <span
+                      className={`font-semibold ${
+                        bodyMetrics.weeklyWeightDeltaKg < 0
+                          ? 'text-warning'
+                          : bodyMetrics.weeklyWeightDeltaKg > 0
+                            ? 'text-success'
+                            : 'text-ink'
+                      }`}
+                    >
+                      {bodyMetrics.weeklyWeightDeltaKg > 0 ? '+' : ''}
+                      {bodyMetrics.weeklyWeightDeltaKg} kg
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-line pt-3">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={onOpenLogWeight}
+                  className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                >
+                  <Plus size={13} aria-hidden="true" />
+                  <span>{bodyMetrics?.todayWeight ? 'Update weight' : 'Log weight'}</span>
+                </button>
+                <Link
+                  to="/progress?tab=body"
+                  className="text-xs text-muted hover:text-ink"
+                >
+                  Curve
+                </Link>
               </div>
             </div>
           </Card>

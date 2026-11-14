@@ -7,6 +7,23 @@ import {
   softDeleteAiWorkoutLog,
 } from './aiWorkoutLogs'
 import {
+  logWeight,
+  getWeightLogByDate,
+  getLatestWeightLog,
+  listWeightLogsInRange,
+  softDeleteWeightLog,
+  logSteps,
+  incrementSteps,
+  getStepLogByDate,
+  softDeleteStepLog,
+} from './bodyMetrics'
+import {
+  getMonthlyCalorieTarget,
+  saveMonthlyCalorieTarget,
+  listMonthlyCalorieTargets,
+  softDeleteMonthlyCalorieTarget,
+} from './monthlyTargets'
+import {
   createExercise,
   listActiveExercises,
   softDeleteExercise,
@@ -770,5 +787,87 @@ describe('repositories', () => {
     )
     dbV2.close()
     await dbV2.delete()
+  })
+
+  it('manages weight logs with creation, update, range queries, and soft delete', async () => {
+    const log1 = await logWeight(
+      { localDate: '2026-11-01', weightKg: 75.5, unit: 'kg', notes: 'Morning weigh-in' },
+      testDatabase,
+    )
+    expect(log1.weightKg).toBe(75.5)
+
+    // Updating on same date overwrites record
+    const updatedLog1 = await logWeight(
+      { localDate: '2026-11-01', weightKg: 75.2, unit: 'kg' },
+      testDatabase,
+    )
+    expect(updatedLog1.id).toBe(log1.id)
+    expect(updatedLog1.weightKg).toBe(75.2)
+
+    await logWeight(
+      { localDate: '2026-11-02', weightKg: 74.9, unit: 'kg' },
+      testDatabase,
+    )
+
+    const latest = await getLatestWeightLog(testDatabase)
+    expect(latest?.localDate).toBe('2026-11-02')
+    expect(latest?.weightKg).toBe(74.9)
+
+    const range = await listWeightLogsInRange('2026-11-01', '2026-11-02', testDatabase)
+    expect(range.length).toBe(2)
+
+    await softDeleteWeightLog(log1.id, testDatabase)
+    const afterDelete = await getWeightLogByDate('2026-11-01', testDatabase)
+    expect(afterDelete).toBeUndefined()
+  })
+
+  it('manages step logs with creation, increment, and range queries', async () => {
+    const step1 = await logSteps(
+      { localDate: '2026-11-01', stepCount: 5000, targetSteps: 10000 },
+      testDatabase,
+    )
+    expect(step1.stepCount).toBe(5000)
+
+    const incremented = await incrementSteps('2026-11-01', 2500, 10000, testDatabase)
+    expect(incremented.id).toBe(step1.id)
+    expect(incremented.stepCount).toBe(7500)
+
+    const fetched = await getStepLogByDate('2026-11-01', testDatabase)
+    expect(fetched?.stepCount).toBe(7500)
+
+    await softDeleteStepLog(step1.id, testDatabase)
+    expect(await getStepLogByDate('2026-11-01', testDatabase)).toBeUndefined()
+  })
+
+  it('manages monthly calorie targets with upsert and list', async () => {
+    const target = await saveMonthlyCalorieTarget(
+      {
+        monthKey: '2026-11',
+        targetCalories: 2200,
+        phase: 'cut',
+        tdeeEstimate: 2600,
+        targetProteinG: 160,
+      },
+      testDatabase,
+    )
+    expect(target.targetCalories).toBe(2200)
+    expect(target.phase).toBe('cut')
+
+    const fetched = await getMonthlyCalorieTarget('2026-11', testDatabase)
+    expect(fetched?.targetCalories).toBe(2200)
+
+    const updated = await saveMonthlyCalorieTarget(
+      { monthKey: '2026-11', targetCalories: 2100 },
+      testDatabase,
+    )
+    expect(updated.id).toBe(target.id)
+    expect(updated.targetCalories).toBe(2100)
+    expect(updated.phase).toBe('cut') // preserved
+
+    const list = await listMonthlyCalorieTargets(testDatabase)
+    expect(list.length).toBe(1)
+
+    await softDeleteMonthlyCalorieTarget(target.id, testDatabase)
+    expect(await getMonthlyCalorieTarget('2026-11', testDatabase)).toBeUndefined()
   })
 })

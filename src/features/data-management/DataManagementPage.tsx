@@ -25,7 +25,8 @@ import {
 import { createCsvExport, type CsvExportKind } from './csvExport'
 import { downloadTextFile } from './download'
 import { formatLocalDate } from '../../lib/dateTime'
-import { removeDemoData, seedDemoData } from './demoDataService'
+import { db } from '../../db/database'
+import { removeDemoData, seedDemoData, resetDemoManifest } from './demoDataService'
 import {
   checkStoragePersistence,
   getStorageQuota,
@@ -91,6 +92,7 @@ function DataManagementPage() {
   const [demoConfirmation, setDemoConfirmation] = useState<'load' | 'remove' | null>(
     null,
   )
+  const [forceLoadDemo, setForceLoadDemo] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isPersisted, setIsPersisted] = useState<boolean | null>(null)
   const [quotaInfo, setQuotaInfo] = useState<StorageQuotaInfo | null>(null)
@@ -270,25 +272,33 @@ function DataManagementPage() {
     }
   }
 
-  const loadDemoHistory = async () => {
+  const loadDemoHistory = async (force = false) => {
     if (busy) return
     setBusy(true)
     setOperationError(null)
     setStatusMessage(null)
     try {
-      const result = await seedDemoData()
+      const result = await seedDemoData(db, new Date(), force)
       setDemoConfirmation(null)
+      setForceLoadDemo(false)
       setStatusMessage(
         result.alreadyLoaded
           ? `Demo history is already loaded for ${result.startDate} through ${result.endDate}; no duplicate records were added.`
-          : `Loaded fictional demo history for ${result.startDate} through ${result.endDate}: ${result.workoutSessions} workouts, ${result.workoutExercises} workout exercises, ${result.exerciseSets} sets, ${result.exercises} demo exercises, ${result.savedMeals} saved meals, and ${result.mealLogs} meal logs.`,
+          : `Loaded fictional demo history for ${result.startDate} through ${result.endDate}: ${result.workoutSessions} workouts, ${result.workoutExercises} workout exercises, ${result.exerciseSets} sets, ${result.exercises} demo exercises, ${result.savedMeals} saved meals, ${result.mealLogs} meal logs, 7 weigh-ins, 7 step logs, and monthly calorie target.`,
       )
       void dispatch(loadDashboardThunk(period))
+      void dispatch(loadActiveWorkoutThunk())
     } catch (seedError) {
       setOperationError(`Demo data could not be loaded: ${errorMessage(seedError)}`)
     } finally {
       setBusy(false)
     }
+  }
+
+  const handleResetDemoLock = () => {
+    resetDemoManifest()
+    setOperationError(null)
+    setStatusMessage('Demo lock cleared. You can now reload demo data.')
   }
 
   const cleanDemoHistory = async () => {
@@ -345,8 +355,29 @@ function DataManagementPage() {
         </p>
       )}
       {operationError && (
-        <div role="alert" className="mb-4 rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
-          {operationError}
+        <div role="alert" className="mb-4 rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm text-danger space-y-3">
+          <p>{operationError}</p>
+          {operationError.toLowerCase().includes('demo') && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-danger/20">
+              <Button
+                size="small"
+                variant="danger"
+                loading={busy}
+                disabled={busy}
+                onClick={() => void loadDemoHistory(true)}
+              >
+                Force reload demo data
+              </Button>
+              <Button
+                size="small"
+                variant="outline"
+                disabled={busy}
+                onClick={handleResetDemoLock}
+              >
+                Clear demo lock
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -354,7 +385,7 @@ function DataManagementPage() {
         <section aria-labelledby="demo-data-title">
           <Card
             title="Seven days of demo history"
-            description="Add realistic workouts and nutrition history to exercise the dashboard, progress analytics, and charts."
+            description="Add realistic workouts, nutrition history, weight logs, steps, and calorie targets to exercise the dashboard, progress analytics, and charts."
             actions={<Badge variant="warning">Fictional data</Badge>}
           >
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -364,8 +395,8 @@ function DataManagementPage() {
                 </h2>
                 <p className="text-sm leading-6 text-muted">
                   This adds clearly labeled fictional workouts, exercises, saved
-                  meals, and meal logs covering today and the preceding six local
-                  calendar days. Existing records are not replaced or reset.
+                  meals, meal logs, 7 daily weigh-ins, daily step counts, and a monthly calorie target
+                  covering today and the preceding six local calendar days. Existing records are not replaced or reset.
                   Loading again will not create duplicates.
                 </p>
                 <p className="mt-2 text-sm font-medium text-warning">
@@ -698,7 +729,7 @@ function DataManagementPage() {
                 if (demoConfirmation === 'remove') {
                   void cleanDemoHistory()
                 } else if (demoConfirmation === 'load') {
-                  void loadDemoHistory()
+                  void loadDemoHistory(forceLoadDemo)
                 }
               }}
             >
@@ -722,13 +753,22 @@ function DataManagementPage() {
         ) : (
           <div className="space-y-3 text-sm leading-6 text-muted">
             <p>
-              This creates fictional demo workouts and nutrition records for
-              today and the preceding six local calendar days.
+              This creates fictional demo workouts, nutrition records, 7 days of weigh-ins,
+              daily step counts, and a monthly calorie target covering today and the preceding six local calendar days.
             </p>
             <p className="font-semibold text-ink">
               Existing records will not be replaced or deleted. Confirm to add
               the demo records to this browser&apos;s database.
             </p>
+            <label className="flex items-center gap-2.5 pt-2 text-xs text-ink cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={forceLoadDemo}
+                onChange={(e) => setForceLoadDemo(e.target.checked)}
+                className="h-4 w-4 rounded border-line text-accent focus:ring-accent bg-surface"
+              />
+              <span>Force overwrite / bypass prior demo locks</span>
+            </label>
           </div>
         )}
       </Modal>

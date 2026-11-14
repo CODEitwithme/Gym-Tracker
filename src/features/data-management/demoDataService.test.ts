@@ -160,6 +160,18 @@ describe('demo history service', () => {
     const progress = await loadExerciseProgress(squat!.id, testDatabase)
     expect(progress.entries).toHaveLength(1)
     expect(progress.entries[0].sets).toHaveLength(3)
+
+    const weightLogs = await testDatabase.weightLogs.toArray()
+    expect(weightLogs).toHaveLength(7)
+    expect(weightLogs.every((w) => w.weightKg > 0)).toBe(true)
+
+    const stepLogs = await testDatabase.stepLogs.toArray()
+    expect(stepLogs).toHaveLength(7)
+    expect(stepLogs.every((s) => s.stepCount > 0)).toBe(true)
+
+    const monthlyTargets = await testDatabase.monthlyCalorieTargets.toArray()
+    expect(monthlyTargets).toHaveLength(1)
+    expect(monthlyTargets[0].targetCalories).toBe(2200)
   })
 
   it('leaves real records unchanged and safely reuses existing exercises', async () => {
@@ -327,5 +339,10 @@ describe('demo history service', () => {
     await expect(seedDemoData(testDatabase, asOf)).rejects.toThrow(
       /still in use or have changed/,
     )
+
+    // With force = true, it bypasses the cleanup_pending manifest and successfully seeds demo data
+    const forceResult = await seedDemoData(testDatabase, asOf, true)
+    expect(forceResult.alreadyLoaded).toBe(false)
+    expect(forceResult.workoutSessions).toBe(5)
   })
 })

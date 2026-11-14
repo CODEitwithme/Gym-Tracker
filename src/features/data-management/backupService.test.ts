@@ -126,7 +126,7 @@ describe('versioned JSON backup', () => {
 
     expect(parsed.format).toBe(BACKUP_FORMAT)
     expect(parsed.backupVersion).toBe(BACKUP_VERSION)
-    expect(parsed.schemaVersion).toBe(2)
+    expect(parsed.schemaVersion).toBe(DATABASE_VERSION)
     expect(Object.keys(parsed.data).sort()).toEqual([...BACKUP_TABLES].sort())
     expect(parsed.data.workoutSessions[0]).toMatchObject({
       id: records.workout.id,
@@ -171,6 +171,9 @@ describe('versioned JSON backup', () => {
       savedMeals: [],
       mealLogs: [],
       aiWorkoutLogs: [],
+      weightLogs: [],
+      stepLogs: [],
+      monthlyCalorieTargets: [],
     })
   })
 
@@ -322,7 +325,7 @@ describe('backup import strategies', () => {
     const replacement = await createBackup(sourceDatabase)
 
     const result = await importBackup(replacement, 'replace', testDatabase)
-    expect(Object.values(result.inserted)).toEqual([1, 1, 1, 1, 1, 1, 0])
+    expect(Object.values(result.inserted)).toEqual([1, 1, 1, 1, 1, 1, 0, 0, 0, 0])
     expect(await testDatabase.workoutSessions.get(original.workout.id)).toBeUndefined()
     expect(
       await testDatabase.workoutSessions.get(replacementRecords.workout.id),

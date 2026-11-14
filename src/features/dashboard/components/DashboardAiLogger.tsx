@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { formatLocalDate } from '../../../lib/dateTime'
+import { poundsToKilograms } from '../../../lib/units'
+import { logSteps, logWeight } from '../../../db/repositories/bodyMetrics'
 import { Link } from 'react-router-dom'
 import {
   Apple,
@@ -37,7 +40,8 @@ import type {
 const WORKOUT_EXAMPLES = [
   'Bench press 80kg 3x8, Incline DB press 24kg 3x10',
   'Squats 100kg 5x5, Leg press 180kg 3x10',
-  'Pull-ups 4x10, Barbell rows 60kg 3x12',
+  'Walked 8,500 steps',
+  'Weighed 74.5 kg',
   '5km run in 25 min',
 ]
 
@@ -119,6 +123,54 @@ export function DashboardAiLogger({ onActivityLogged, isDrawer }: DashboardAiLog
 
     stopListening()
     clearVoiceError()
+
+    // Quick regex checks for Steps or Weight
+    const stepMatch =
+      trimmed.match(/^(?:walked|did|ran|logged steps?|steps?)\s*([0-9]{1,6}(?:,[0-9]{3})?)\s*(?:steps?)?$/i) ||
+      trimmed.match(/([0-9]{1,6}(?:,[0-9]{3})?)\s*steps/i)
+
+    if (stepMatch) {
+      const count = Number(stepMatch[1].replace(/,/g, ''))
+      if (Number.isFinite(count) && count > 0) {
+        try {
+          const today = formatLocalDate(new Date())
+          await logSteps({ localDate: today, stepCount: count, targetSteps: 10000 })
+          setSaveSuccess(`Logged ${count.toLocaleString()} steps for today!`)
+          setInputText('')
+          onActivityLogged?.()
+          return
+        } catch (err) {
+          setParseError(err instanceof Error ? err.message : 'Failed to log steps.')
+          return
+        }
+      }
+    }
+
+    const weightMatch =
+      trimmed.match(/^(?:weighed|weight|logged weight|scale)\s*([0-9]{2,3}(?:\.[0-9]{1,2})?)\s*(kg|lbs?|pounds?)?$/i) ||
+      trimmed.match(/([0-9]{2,3}(?:\.[0-9]{1,2})?)\s*(kg|lbs?|pounds?)/i)
+
+    if (weightMatch) {
+      const val = Number(weightMatch[1])
+      const unitRaw = (weightMatch[2] || 'kg').toLowerCase()
+      const isLb = unitRaw.startsWith('lb') || unitRaw.startsWith('pound')
+      const weightKg = isLb ? poundsToKilograms(val) : val
+
+      if (Number.isFinite(val) && val > 0) {
+        try {
+          const today = formatLocalDate(new Date())
+          await logWeight({ localDate: today, weightKg, unit: isLb ? 'lb' : 'kg' })
+          setSaveSuccess(`Logged ${val} ${isLb ? 'lb' : 'kg'} for today!`)
+          setInputText('')
+          onActivityLogged?.()
+          return
+        } catch (err) {
+          setParseError(err instanceof Error ? err.message : 'Failed to log weight.')
+          return
+        }
+      }
+    }
+
     setParsing(true)
     setParseError(null)
     setSaveSuccess(null)

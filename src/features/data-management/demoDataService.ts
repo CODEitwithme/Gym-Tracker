@@ -392,14 +392,30 @@ function idGroups(records: RecordGroups): IdGroups {
   }
 }
 
+export function resetDemoManifest(): void {
+  try {
+    storage().removeItem(DEMO_MANIFEST_KEY)
+  } catch {
+    // Ignore
+  }
+}
+
 export async function seedDemoData(
   database: GymTrackerDatabase = db,
   asOf = new Date(),
+  force = false,
 ): Promise<DemoSeedResult> {
   if (Number.isNaN(asOf.getTime())) {
     throw new Error('A valid local date is required to create demo history.')
   }
   const localStorage = storage()
+  if (force) {
+    try {
+      localStorage.removeItem(DEMO_MANIFEST_KEY)
+    } catch {
+      // Ignore
+    }
+  }
   let operationId: string | null = null
   try {
     return await database.transaction(
@@ -411,6 +427,9 @@ export async function seedDemoData(
         database.exerciseSets,
         database.savedMeals,
         database.mealLogs,
+        database.weightLogs,
+        database.stepLogs,
+        database.monthlyCalorieTargets,
       ],
       async () => {
         const currentRaw = localStorage.getItem(DEMO_MANIFEST_KEY)
@@ -420,7 +439,7 @@ export async function seedDemoData(
           if (current.state === 'loaded' && allIdsPresent(present, current.ids)) {
             return resultFromManifest(current, true)
           }
-          if (noIdsPresent(present)) {
+          if (noIdsPresent(present) || force) {
             localStorage.removeItem(DEMO_MANIFEST_KEY)
           } else {
             throw new Error(
@@ -450,7 +469,8 @@ export async function seedDemoData(
         }
         for (const movement of requiredMovements.values()) {
           const key = movement.name.toLocaleLowerCase()
-          const existing = exerciseByName.get(key)
+          const demoKey = `demo · ${movement.name}`.toLocaleLowerCase()
+          const existing = exerciseByName.get(key) ?? exerciseByName.get(demoKey)
           if (existing) {
             exerciseIdsByName.set(movement.name, existing.id)
           } else {
@@ -592,6 +612,94 @@ export async function seedDemoData(
             )
             records.mealLogs.push(log)
           }
+        }
+
+        // Seed 7 days of demo weight logs
+        const demoWeights = [
+          { dayOffset: -6, weightKg: 75.8 },
+          { dayOffset: -5, weightKg: 75.6 },
+          { dayOffset: -4, weightKg: 75.9 },
+          { dayOffset: -3, weightKg: 75.5 },
+          { dayOffset: -2, weightKg: 75.4 },
+          { dayOffset: -1, weightKg: 75.3 },
+          { dayOffset: 0, weightKg: 75.2 },
+        ]
+        const now = createTimestamp()
+        for (const item of demoWeights) {
+          const date = formatLocalDate(localDay(asOf, item.dayOffset))
+          const existingWeight = await database.weightLogs
+            .where('localDate')
+            .equals(date)
+            .filter((w) => w.deletedAt === null)
+            .first()
+
+          if (!existingWeight) {
+            await database.weightLogs.add({
+              id: createUUID(),
+              localDate: date,
+              weightKg: item.weightKg,
+              unit: 'kg',
+              notes: 'Morning fasted weigh-in',
+              createdAt: now,
+              updatedAt: now,
+              deletedAt: null,
+            })
+          }
+        }
+
+        // Seed 7 days of demo step logs
+        const demoSteps = [
+          { dayOffset: -6, stepCount: 8420 },
+          { dayOffset: -5, stepCount: 10150 },
+          { dayOffset: -4, stepCount: 7890 },
+          { dayOffset: -3, stepCount: 11200 },
+          { dayOffset: -2, stepCount: 9450 },
+          { dayOffset: -1, stepCount: 12300 },
+          { dayOffset: 0, stepCount: 8900 },
+        ]
+        for (const item of demoSteps) {
+          const date = formatLocalDate(localDay(asOf, item.dayOffset))
+          const existingStep = await database.stepLogs
+            .where('localDate')
+            .equals(date)
+            .filter((s) => s.deletedAt === null)
+            .first()
+
+          if (!existingStep) {
+            await database.stepLogs.add({
+              id: createUUID(),
+              localDate: date,
+              stepCount: item.stepCount,
+              targetSteps: 10000,
+              createdAt: now,
+              updatedAt: now,
+              deletedAt: null,
+            })
+          }
+        }
+
+        // Seed demo monthly calorie target for current month
+        const currentMonthKey = formatLocalDate(asOf).slice(0, 7)
+        const existingTarget = await database.monthlyCalorieTargets
+          .where('monthKey')
+          .equals(currentMonthKey)
+          .filter((t) => t.deletedAt === null)
+          .first()
+
+        if (!existingTarget) {
+          await database.monthlyCalorieTargets.add({
+            id: createUUID(),
+            monthKey: currentMonthKey,
+            targetCalories: 2200,
+            phase: 'cut',
+            tdeeEstimate: 2600,
+            targetProteinG: 160,
+            targetCarbsG: 220,
+            targetFatG: 65,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+          })
         }
 
         manifest.state = 'loaded'

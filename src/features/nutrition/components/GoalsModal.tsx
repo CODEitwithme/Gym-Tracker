@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Calculator } from 'lucide-react'
 import { Button, Input, Modal } from '../../../components/common'
 import type { DailyNutritionGoals } from '../types'
 
@@ -8,9 +9,16 @@ interface GoalsModalProps {
   onClose: () => void
   currentGoals: DailyNutritionGoals | null
   onSave: (goals: DailyNutritionGoals) => boolean
+  onOpenCalculator?: () => void
 }
 
-function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
+function GoalsModal({
+  open,
+  onClose,
+  currentGoals,
+  onSave,
+  onOpenCalculator,
+}: GoalsModalProps) {
   const [calories, setCalories] = useState(
     currentGoals ? String(currentGoals.calories) : '2000',
   )
@@ -86,6 +94,27 @@ function GoalsModal({ open, onClose, currentGoals, onSave }: GoalsModalProps) {
           Set your personal daily targets. These will be used to show your progress
           on the nutrition dashboard.
         </p>
+
+        {onOpenCalculator && (
+          <div className="rounded-xl border border-accent/20 bg-accent/5 p-3 flex items-center justify-between">
+            <div className="text-xs">
+              <p className="font-semibold text-ink">Need help calculating targets?</p>
+              <p className="text-muted">Compute BMR &amp; maintenance TDEE from height &amp; weight.</p>
+            </div>
+            <Button
+              type="button"
+              size="small"
+              variant="outline"
+              icon={Calculator}
+              onClick={() => {
+                onClose()
+                onOpenCalculator()
+              }}
+            >
+              Calculator
+            </Button>
+          </div>
+        )}
 
         {error && (
           <p role="alert" className="rounded-lg border border-danger/20 bg-danger-soft p-3 text-xs text-danger">

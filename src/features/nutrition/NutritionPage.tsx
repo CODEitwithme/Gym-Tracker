@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Apple,
   Calendar as CalendarIcon,
+  Calculator,
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -41,6 +42,8 @@ import type {
 import LogMealModal from './components/LogMealModal'
 import EditMealLogModal from './components/EditMealLogModal'
 import GoalsModal from './components/GoalsModal'
+import { TdeeCalculatorModal } from './components/TdeeCalculatorModal'
+import { MonthlyCalorieTracker } from './components/MonthlyCalorieTracker'
 
 function formatDateDisplay(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number)
@@ -102,6 +105,7 @@ function NutritionPage() {
     getSavedNutritionGoals(),
   )
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false)
+  const [isTdeeModalOpen, setIsTdeeModalOpen] = useState(false)
   const [logModalOpen, setLogModalOpen] = useState(false)
   const [logModalTab, setLogModalTab] = useState<'ai' | 'library'>('library')
   const [logMealType, setLogMealType] = useState<MealType>('breakfast')
@@ -192,6 +196,13 @@ function NutritionPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            icon={Calculator}
+            onClick={() => setIsTdeeModalOpen(true)}
+          >
+            TDEE Calculator
+          </Button>
           <Button
             variant="outline"
             icon={Sparkles}
@@ -479,6 +490,14 @@ function NutritionPage() {
       </div>
       ) : null}
 
+      {/* Monthly Target & Adherence Tracker */}
+      <div className="mt-8">
+        <MonthlyCalorieTracker
+          onOpenCalculator={() => setIsTdeeModalOpen(true)}
+          fallbackTargetCalories={goals?.calories ?? 2000}
+        />
+      </div>
+
       {/* Modals */}
       <LogMealModal
         open={logModalOpen}
@@ -515,6 +534,16 @@ function NutritionPage() {
         onClose={() => setIsGoalsModalOpen(false)}
         currentGoals={goals}
         onSave={handleSaveGoals}
+        onOpenCalculator={() => setIsTdeeModalOpen(true)}
+      />
+
+      <TdeeCalculatorModal
+        open={isTdeeModalOpen}
+        onClose={() => setIsTdeeModalOpen(false)}
+        onGoalsApplied={() => {
+          setGoals(getSavedNutritionGoals())
+          void loadData(selectedDate)
+        }}
       />
 
       <Modal

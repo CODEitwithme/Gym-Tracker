@@ -57,6 +57,9 @@ export async function readBackupData(
       database.savedMeals,
       database.mealLogs,
       database.aiWorkoutLogs,
+      database.weightLogs,
+      database.stepLogs,
+      database.monthlyCalorieTargets,
     ],
     async () => {
       const [
@@ -67,6 +70,9 @@ export async function readBackupData(
         savedMeals,
         mealLogs,
         aiWorkoutLogs,
+        weightLogs,
+        stepLogs,
+        monthlyCalorieTargets,
       ] = await Promise.all([
         database.workoutSessions.toArray(),
         database.exercises.toArray(),
@@ -75,6 +81,9 @@ export async function readBackupData(
         database.savedMeals.toArray(),
         database.mealLogs.toArray(),
         database.aiWorkoutLogs.toArray(),
+        database.weightLogs.toArray(),
+        database.stepLogs.toArray(),
+        database.monthlyCalorieTargets.toArray(),
       ])
       return {
         workoutSessions,
@@ -84,6 +93,9 @@ export async function readBackupData(
         savedMeals,
         mealLogs,
         aiWorkoutLogs,
+        weightLogs,
+        stepLogs,
+        monthlyCalorieTargets,
       }
     },
   )
@@ -168,6 +180,9 @@ function emptyCounts(): Record<(typeof BACKUP_TABLES)[number], number> {
     savedMeals: 0,
     mealLogs: 0,
     aiWorkoutLogs: 0,
+    weightLogs: 0,
+    stepLogs: 0,
+    monthlyCalorieTargets: 0,
   }
 }
 
@@ -211,6 +226,9 @@ export async function importBackup(
       database.savedMeals,
       database.mealLogs,
       database.aiWorkoutLogs,
+      database.weightLogs,
+      database.stepLogs,
+      database.monthlyCalorieTargets,
     ],
     async () => {
       if (strategy === 'replace') {
@@ -221,6 +239,9 @@ export async function importBackup(
         await database.workoutExercises.clear()
         await database.workoutSessions.clear()
         await database.exercises.clear()
+        await database.weightLogs.clear()
+        await database.stepLogs.clear()
+        await database.monthlyCalorieTargets.clear()
 
         await addIfAny(database.workoutSessions, backup.data.workoutSessions)
         await addIfAny(database.exercises, backup.data.exercises)
@@ -229,6 +250,9 @@ export async function importBackup(
         await addIfAny(database.savedMeals, backup.data.savedMeals)
         await addIfAny(database.mealLogs, backup.data.mealLogs)
         await addIfAny(database.aiWorkoutLogs, backup.data.aiWorkoutLogs ?? [])
+        await addIfAny(database.weightLogs, backup.data.weightLogs ?? [])
+        await addIfAny(database.stepLogs, backup.data.stepLogs ?? [])
+        await addIfAny(database.monthlyCalorieTargets, backup.data.monthlyCalorieTargets ?? [])
         for (const table of BACKUP_TABLES) {
           inserted[table] = (backup.data[table] ?? []).length
         }
@@ -243,6 +267,9 @@ export async function importBackup(
         mealsExisting,
         logsExisting,
         aiLogsExisting,
+        weightLogsExisting,
+        stepLogsExisting,
+        monthlyTargetsExisting,
       ] = await Promise.all([
         database.workoutSessions.toArray(),
         database.exercises.toArray(),
@@ -251,6 +278,9 @@ export async function importBackup(
         database.savedMeals.toArray(),
         database.mealLogs.toArray(),
         database.aiWorkoutLogs.toArray(),
+        database.weightLogs.toArray(),
+        database.stepLogs.toArray(),
+        database.monthlyCalorieTargets.toArray(),
       ])
       const sessions = findTableMerge(
         'workoutSessions',
@@ -287,6 +317,21 @@ export async function importBackup(
         backup.data.aiWorkoutLogs ?? [],
         aiLogsExisting,
       )
+      const weightLogs = findTableMerge(
+        'weightLogs',
+        backup.data.weightLogs ?? [],
+        weightLogsExisting,
+      )
+      const stepLogs = findTableMerge(
+        'stepLogs',
+        backup.data.stepLogs ?? [],
+        stepLogsExisting,
+      )
+      const monthlyTargets = findTableMerge(
+        'monthlyCalorieTargets',
+        backup.data.monthlyCalorieTargets ?? [],
+        monthlyTargetsExisting,
+      )
       const conflicts = [
         ...sessions.conflicts,
         ...exercises.conflicts,
@@ -295,6 +340,9 @@ export async function importBackup(
         ...meals.conflicts,
         ...logs.conflicts,
         ...aiLogs.conflicts,
+        ...weightLogs.conflicts,
+        ...stepLogs.conflicts,
+        ...monthlyTargets.conflicts,
       ]
       if (conflicts.length) throw new BackupConflictError(conflicts)
 
@@ -305,6 +353,9 @@ export async function importBackup(
       await addIfAny(database.savedMeals, meals.insert)
       await addIfAny(database.mealLogs, logs.insert)
       await addIfAny(database.aiWorkoutLogs, aiLogs.insert)
+      await addIfAny(database.weightLogs, weightLogs.insert)
+      await addIfAny(database.stepLogs, stepLogs.insert)
+      await addIfAny(database.monthlyCalorieTargets, monthlyTargets.insert)
       inserted.workoutSessions = sessions.insert.length
       inserted.exercises = exercises.insert.length
       inserted.workoutExercises = workoutExercises.insert.length
@@ -312,6 +363,9 @@ export async function importBackup(
       inserted.savedMeals = meals.insert.length
       inserted.mealLogs = logs.insert.length
       inserted.aiWorkoutLogs = aiLogs.insert.length
+      inserted.weightLogs = weightLogs.insert.length
+      inserted.stepLogs = stepLogs.insert.length
+      inserted.monthlyCalorieTargets = monthlyTargets.insert.length
       alreadyPresent.workoutSessions = sessions.alreadyPresent
       alreadyPresent.exercises = exercises.alreadyPresent
       alreadyPresent.workoutExercises = workoutExercises.alreadyPresent
@@ -319,6 +373,9 @@ export async function importBackup(
       alreadyPresent.savedMeals = meals.alreadyPresent
       alreadyPresent.mealLogs = logs.alreadyPresent
       alreadyPresent.aiWorkoutLogs = aiLogs.alreadyPresent
+      alreadyPresent.weightLogs = weightLogs.alreadyPresent
+      alreadyPresent.stepLogs = stepLogs.alreadyPresent
+      alreadyPresent.monthlyCalorieTargets = monthlyTargets.alreadyPresent
     },
   )
 

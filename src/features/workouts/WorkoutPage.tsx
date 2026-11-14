@@ -132,6 +132,11 @@ function WorkoutPage() {
             sets: item.sets.length || 3,
             durationSeconds: null,
             notes: item.workoutExercise.notes ?? '',
+            setDetails: item.sets.map((s, idx) => ({
+              setNumber: idx + 1,
+              weight: s.weightKg,
+              reps: s.reps,
+            })),
           }
         }) ?? []
 

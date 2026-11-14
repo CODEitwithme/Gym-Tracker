@@ -666,7 +666,7 @@ export function ParsedWorkoutPreview({
                     </div>
 
                     <div className="space-y-2">
-                      <div className="grid grid-cols-[3.5rem_1fr_1fr_2.5rem] items-center gap-2 px-1 text-xs font-semibold text-muted">
+                      <div className="grid grid-cols-[2.75rem_1fr_1fr_2.5rem] sm:grid-cols-[3.5rem_1fr_1fr_2.5rem] items-center gap-2 px-1 text-xs font-semibold text-muted">
                         <span>Set</span>
                         <span>Weight ({item.unit})</span>
                         <span>Reps</span>
@@ -675,7 +675,7 @@ export function ParsedWorkoutPreview({
                       {item.setRows.map((setRow, sIdx) => (
                         <div
                           key={`set-${item.id}-${sIdx}`}
-                          className="grid grid-cols-[3.5rem_1fr_1fr_2.5rem] items-center gap-2 rounded-lg border border-line/60 bg-panel/80 p-2"
+                          className="grid grid-cols-[2.75rem_1fr_1fr_2.5rem] sm:grid-cols-[3.5rem_1fr_1fr_2.5rem] items-center gap-2 rounded-xl border border-line/60 bg-panel/80 p-2 sm:p-2.5"
                         >
                           <span className="text-center text-xs font-bold text-accent">
                             #{sIdx + 1}
@@ -686,14 +686,15 @@ export function ParsedWorkoutPreview({
                               type="number"
                               step="any"
                               min="0"
+                              inputMode="decimal"
                               value={setRow.weight}
                               onChange={(e) =>
                                 updateSetRow(index, sIdx, 'weight', e.target.value)
                               }
-                              placeholder={`e.g. 24`}
+                              placeholder="e.g. 24"
                               disabled={saving}
                               aria-label={`Set ${sIdx + 1} weight in ${item.unit}`}
-                              className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-xs text-ink placeholder:text-muted/60 focus-visible:outline-2 focus-visible:outline-accent"
+                              className="h-11 sm:h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-base sm:text-xs text-ink placeholder:text-muted/60 focus-visible:outline-2 focus-visible:outline-accent"
                             />
                           </div>
 
@@ -701,6 +702,8 @@ export function ParsedWorkoutPreview({
                             <input
                               type="number"
                               min="1"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={setRow.reps}
                               onChange={(e) =>
                                 updateSetRow(index, sIdx, 'reps', e.target.value)
@@ -709,7 +712,7 @@ export function ParsedWorkoutPreview({
                               required
                               disabled={saving}
                               aria-label={`Set ${sIdx + 1} reps`}
-                              className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-xs text-ink placeholder:text-muted/60 focus-visible:outline-2 focus-visible:outline-accent"
+                              className="h-11 sm:h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-base sm:text-xs text-ink placeholder:text-muted/60 focus-visible:outline-2 focus-visible:outline-accent"
                             />
                           </div>
 
@@ -719,9 +722,9 @@ export function ParsedWorkoutPreview({
                               onClick={() => removeSetRow(index, sIdx)}
                               disabled={saving || item.setRows.length <= 1}
                               aria-label={`Remove set ${sIdx + 1}`}
-                              className="flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-500/15 hover:text-red-400 disabled:opacity-20 disabled:pointer-events-none"
+                              className="flex size-10 sm:size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-500/15 hover:text-red-400 active:scale-90 disabled:opacity-20 disabled:pointer-events-none"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={15} />
                             </button>
                           </div>
                         </div>
@@ -785,13 +788,14 @@ export function ParsedWorkoutPreview({
           disabled={saving}
         />
 
-        {/* Footer Actions */}
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-3">
+        {/* Footer Actions — Sticky & thumb-friendly on mobile phones */}
+        <div className="sticky bottom-0 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 border-t border-line bg-panel/95 backdrop-blur-md px-4 py-3 sm:px-6 pb-safe">
           <Button
             variant="ghost"
             onClick={onCancel}
             disabled={saving}
             icon={XCircle}
+            className="order-2 sm:order-1"
           >
             Cancel
           </Button>
@@ -801,6 +805,7 @@ export function ParsedWorkoutPreview({
             loading={saving}
             disabled={saving}
             icon={CheckCircle}
+            className="order-1 sm:order-2"
           >
             {saving
               ? 'Saving Workout…'

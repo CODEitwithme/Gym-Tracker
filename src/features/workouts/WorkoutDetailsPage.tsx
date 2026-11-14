@@ -98,13 +98,14 @@ function EditableSetRow({
             type="number"
             step={unit === 'lb' ? '0.5' : '0.25'}
             min="0"
+            inputMode="decimal"
             value={weight}
             onChange={(e) => {
               setWeight(e.target.value)
               setDirty(true)
             }}
             onBlur={() => void handleBlurOrSave()}
-            className="w-20 rounded border border-line bg-panel px-2 py-1 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent"
+            className="w-20 min-h-10 sm:min-h-8 rounded border border-line bg-panel px-2 py-1 text-base sm:text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent"
           />
           <span className="text-xs text-muted">{unit}</span>
         </div>
@@ -115,13 +116,15 @@ function EditableSetRow({
             type="number"
             step="1"
             min="1"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={reps}
             onChange={(e) => {
               setReps(e.target.value)
               setDirty(true)
             }}
             onBlur={() => void handleBlurOrSave()}
-            className="w-16 rounded border border-line bg-panel px-2 py-1 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent"
+            className="w-16 min-h-10 sm:min-h-8 rounded border border-line bg-panel px-2 py-1 text-base sm:text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent"
           />
           <span className="text-xs text-muted">reps</span>
         </div>

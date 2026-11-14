@@ -486,13 +486,14 @@ export function ParsedMealPreview({
           </span>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-3">
+        {/* Footer Actions — Sticky & thumb-friendly on mobile phones */}
+        <div className="sticky bottom-0 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 border-t border-line bg-panel/95 backdrop-blur-md px-4 py-3 sm:px-6 pb-safe">
           <Button
             variant="ghost"
             onClick={onCancel}
             disabled={saving}
             icon={XCircle}
+            className="order-2 sm:order-1"
           >
             Cancel
           </Button>
@@ -502,6 +503,7 @@ export function ParsedMealPreview({
             loading={saving}
             disabled={saving}
             icon={CheckCircle}
+            className="order-1 sm:order-2"
           >
             {saving
               ? 'Logging Foods…'

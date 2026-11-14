@@ -39,6 +39,14 @@ function Input({
         )}
       </label>
       <input
+        inputMode={
+          props.inputMode ??
+          (props.type === 'number'
+            ? props.step && String(props.step).includes('.')
+              ? 'decimal'
+              : 'numeric'
+            : undefined)
+        }
         {...props}
         id={inputId}
         required={required}
@@ -46,7 +54,7 @@ function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         className={[
-          'min-h-10 w-full rounded-lg border bg-panel px-3 py-2 text-sm text-ink',
+          'min-h-11 sm:min-h-10 w-full rounded-lg border bg-panel px-3.5 py-2.5 sm:px-3 sm:py-2 text-base sm:text-sm text-ink',
           'placeholder:text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-1',
           'disabled:cursor-not-allowed disabled:bg-hover disabled:text-muted',
           error

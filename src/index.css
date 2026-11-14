@@ -53,6 +53,8 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-optical-sizing: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   color-scheme: light;
   --theme-background: #eef1f5;

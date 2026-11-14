@@ -148,7 +148,12 @@ function Modal({
             style={{ boxShadow: 'var(--shadow-modal)' }}
             className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel glass-strong outline-none sm:max-w-lg sm:rounded-3xl lg:max-w-xl"
           >
-            <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+            {/* Mobile slide-up sheet pill indicator */}
+            <div className="flex justify-center pt-2 sm:hidden" aria-hidden="true">
+              <span className="h-1.5 w-10 rounded-full bg-line/80" />
+            </div>
+
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-panel/95 backdrop-blur-md px-5 py-4 sm:px-6">
               <h2 id={titleId} className="text-base font-semibold text-ink">
                 {title}
               </h2>
@@ -167,7 +172,7 @@ function Modal({
             </div>
             <div className="px-5 py-5 sm:px-6">{children}</div>
             {footer != null && (
-              <div className="border-t border-line px-5 py-4 pb-safe-4 sm:px-6">
+              <div className="sticky bottom-0 z-10 border-t border-line bg-panel/95 backdrop-blur-md px-5 py-4 pb-safe-4 sm:px-6">
                 {footer}
               </div>
             )}
